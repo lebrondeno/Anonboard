@@ -19,7 +19,7 @@ export default function Submit() {
   useEffect(() => {
     if (!id) return
     Promise.all([
-      supabase.from('sessions').select('id,title,description,type,categories,allow_reactions,allow_replies,created_at').eq('id', id).single(),
+      supabase.from('sessions').select('id,title,description,type,categories,allow_reactions,allow_replies,cover_image,created_at').eq('id', id).single(),
       supabase.from('responses').select('*').eq('session_id', id).order('created_at', { ascending: false })
     ]).then(([{ data: s }, { data: r }]) => {
       if (!s) { setStatus('notfound'); return }
@@ -84,77 +84,120 @@ export default function Submit() {
   )
 
   return (
-    <div className="page">
-      <div style={{ marginBottom: '1.25rem' }} className="animate-in">
-        <p className="wordmark">Whi<span>spr</span></p>
-      </div>
+    <div className="page" style={{ padding: '0 0 5rem' }}>
 
-      {/* Session header */}
-      <div className="card animate-in-d1" style={{ marginBottom: '10px' }}>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-          <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{typeInfo?.icon}</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '4px' }}>
-              <span className={`tag ${typeInfo?.tagColor}`}>{typeInfo?.label}</span>
-            </div>
-            <p style={{ fontWeight: 500, fontSize: '1rem', lineHeight: 1.4 }}>{session?.title}</p>
-            {session?.description && <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.55 }}>{session.description}</p>}
-          </div>
+      {/* ── Cover image (full bleed, no side padding) ── */}
+      {session?.cover_image && (
+        <div style={{ position: 'relative', width: '100%', height: '200px', marginBottom: '0' }}>
+          <img
+            src={session.cover_image}
+            alt="Session cover"
+            style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }}
+          />
+          {/* gradient overlay so wordmark stays readable */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 60%)',
+          }} />
+          <p style={{
+            position: 'absolute', top: '16px', left: '20px',
+            fontFamily: 'var(--font-display)', fontStyle: 'italic',
+            fontSize: '1.3rem', color: '#fff', letterSpacing: '-0.01em',
+          }}>
+            Whispr
+          </p>
         </div>
-      </div>
-
-      {/* Submission form */}
-      <div className="card animate-in-d2" style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div className="field">
-            <label>Your response</label>
-            <textarea placeholder={typeInfo?.placeholder ?? 'Type your response...'} value={text} onChange={e => setText(e.target.value)} />
-          </div>
-          {session?.categories && session.categories.length > 1 && (
-            <div className="field">
-              <label>Category</label>
-              <select value={category} onChange={e => setCategory(e.target.value)}>
-                {session.categories.map(c => <option key={c}>{c}</option>)}
-              </select>
-            </div>
-          )}
-        </div>
-        {submitError && <p className="error-text">{submitError}</p>}
-        <button className="btn btn-primary btn-full" style={{ marginTop: '12px' }} onClick={submit} disabled={status === 'submitting'}>
-          {status === 'submitting' ? <><span className="spinner spinner-white" /> Submitting...</> : 'Submit anonymously'}
-        </button>
-        <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '8px' }}>
-          No name · No number · No account
-        </p>
-      </div>
-
-      {/* Public responses feed */}
-      {responses.length > 0 && session?.allow_reactions && (
-        <>
-          <p className="section-label">{responses.length} response{responses.length !== 1 ? 's' : ''}</p>
-          {responses.map((r, i) => (
-            <div key={r.id} className="card animate-in" style={{ animationDelay: `${i * 0.035}s`, marginBottom: '10px' }}>
-              <p style={{ fontSize: '0.9375rem', lineHeight: 1.65 }}>{r.text}</p>
-              {r.category && r.category !== 'General' && (
-                <span className="tag tag-gray" style={{ marginTop: '8px', display: 'inline-flex' }}>{r.category}</span>
-              )}
-              <div className="reactions" style={{ marginTop: '10px' }}>
-                {REACTIONS.map(emoji => {
-                  const count = r.reactions?.[emoji] ?? 0
-                  const myVote = voted[r.id] === emoji
-                  return (
-                    <button key={emoji} className={`react-btn${myVote ? ' active' : ''}`} onClick={() => react(r.id, emoji, r.reactions ?? {})} disabled={!!voted[r.id]}>
-                      {emoji} {count > 0 && <span>{count}</span>}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
-        </>
       )}
 
-      <Credit />
+      <div style={{ padding: '1.25rem 1.25rem 0' }}>
+
+        {/* Wordmark — only show if no cover image */}
+        {!session?.cover_image && (
+          <div style={{ marginBottom: '1.25rem' }} className="animate-in">
+            <p className="wordmark">Whi<span>spr</span></p>
+          </div>
+        )}
+
+        {/* Session header card */}
+        <div className="card animate-in-d1" style={{ marginBottom: '10px', marginTop: session?.cover_image ? '12px' : '0' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{typeInfo?.icon}</span>
+            <div style={{ flex: 1 }}>
+              <span className={`tag ${typeInfo?.tagColor}`} style={{ marginBottom: '6px', display: 'inline-flex' }}>
+                {typeInfo?.label}
+              </span>
+              <p style={{ fontWeight: 500, fontSize: '1rem', lineHeight: 1.4 }}>{session?.title}</p>
+              {session?.description && (
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.55 }}>
+                  {session.description}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Submission form */}
+        <div className="card animate-in-d2" style={{ marginBottom: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="field">
+              <label>Your response</label>
+              <textarea
+                placeholder={typeInfo?.placeholder ?? 'Type your response...'}
+                value={text}
+                onChange={e => setText(e.target.value)}
+              />
+            </div>
+            {session?.categories && session.categories.length > 1 && (
+              <div className="field">
+                <label>Category</label>
+                <select value={category} onChange={e => setCategory(e.target.value)}>
+                  {session.categories.map(c => <option key={c}>{c}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+          {submitError && <p className="error-text">{submitError}</p>}
+          <button className="btn btn-primary btn-full" style={{ marginTop: '12px' }} onClick={submit} disabled={status === 'submitting'}>
+            {status === 'submitting' ? <><span className="spinner spinner-white" /> Submitting...</> : 'Submit anonymously'}
+          </button>
+          <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '8px' }}>
+            No name · No number · No account
+          </p>
+        </div>
+
+        {/* Public responses feed */}
+        {responses.length > 0 && session?.allow_reactions && (
+          <>
+            <p className="section-label">{responses.length} response{responses.length !== 1 ? 's' : ''}</p>
+            {responses.map((r, i) => (
+              <div key={r.id} className="card animate-in" style={{ animationDelay: `${i * 0.035}s`, marginBottom: '10px' }}>
+                <p style={{ fontSize: '0.9375rem', lineHeight: 1.65 }}>{r.text}</p>
+                {r.category && r.category !== 'General' && (
+                  <span className="tag tag-gray" style={{ marginTop: '8px', display: 'inline-flex' }}>{r.category}</span>
+                )}
+                <div className="reactions" style={{ marginTop: '10px' }}>
+                  {REACTIONS.map(emoji => {
+                    const count = r.reactions?.[emoji] ?? 0
+                    const myVote = voted[r.id] === emoji
+                    return (
+                      <button
+                        key={emoji}
+                        className={`react-btn${myVote ? ' active' : ''}`}
+                        onClick={() => react(r.id, emoji, r.reactions ?? {})}
+                        disabled={!!voted[r.id]}
+                      >
+                        {emoji} {count > 0 && <span>{count}</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+
+        <Credit />
+      </div>
     </div>
   )
 }

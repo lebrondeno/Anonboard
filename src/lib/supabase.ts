@@ -1,9 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? 'https://placeholder.supabase.co'
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? 'placeholder-key'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const isConfigured = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY)
 
 export type SessionType = 'ideas' | 'suggestions' | 'discussion' | 'poll' | 'ama' | 'feedback'
 
@@ -16,6 +17,7 @@ export type Session = {
   admin_token: string
   allow_reactions: boolean
   allow_replies: boolean
+  cover_image: string
   created_at: string
 }
 
@@ -38,3 +40,9 @@ export const SESSION_TYPES: Record<SessionType, { label: string; icon: string; d
 }
 
 export const REACTIONS = ['👍', '❤️', '🔥', '🤔', '👏']
+
+// Auth helpers
+export async function getCurrentUser() {
+  const { data: { user } } = await supabase.auth.getUser()
+  return user
+}
