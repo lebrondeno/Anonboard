@@ -4,6 +4,7 @@ import { supabase, SESSION_TYPES, isConfigured } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { SessionType } from '../lib/supabase'
 import Credit from '../components/Credit'
+import InstallPrompt from '../components/InstallPrompt'
 import ThemeToggle from '../components/ThemeToggle'
 
 export default function Home() {
@@ -92,6 +93,8 @@ export default function Home() {
           }
         </div>
       </div>
+
+      <InstallPrompt />
 
       {!isConfigured && (
         <div style={{ background: 'var(--amber-soft)', border: '1px solid rgba(251,191,36,0.3)', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: '14px', fontSize: '0.84rem', color: 'var(--amber-text)', lineHeight: 1.6 }}>

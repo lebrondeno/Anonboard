@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { Analytics } from '@vercel/analytics/react'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import { ThemeProvider } from './lib/ThemeContext'
+import { Analytics } from '@vercel/analytics/react'
 import Home from './pages/Home'
 import Submit from './pages/Submit'
 import Admin from './pages/Admin'
@@ -28,13 +28,15 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <AppRoutes />
-          <Analytics />
-        </AuthProvider>
-      </BrowserRouter>
-    </ThemeProvider>
+    <>
+      <ThemeProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <AppRoutes />
+          </AuthProvider>
+        </BrowserRouter>
+      </ThemeProvider>
+      <Analytics />
+    </>
   )
 }
