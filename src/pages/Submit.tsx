@@ -3,8 +3,9 @@ import { useParams } from 'react-router-dom'
 import { supabase, SESSION_TYPES, REACTIONS } from '../lib/supabase'
 import type { Session, Response } from '../lib/supabase'
 import Credit from '../components/Credit'
+import ThemeToggle from '../components/ThemeToggle'
 
-type Status = 'loading' | 'ready' | 'submitting' | 'success' | 'error' | 'notfound'
+type Status = 'loading' | 'ready' | 'submitting' | 'success' | 'notfound'
 
 export default function Submit() {
   const { id } = useParams<{ id: string }>()
@@ -15,11 +16,13 @@ export default function Submit() {
   const [category, setCategory] = useState('')
   const [submitError, setSubmitError] = useState('')
   const [voted, setVoted] = useState<Record<string, string>>({})
+  const [pollVote, setPollVote] = useState('')        // which poll option selected
+  const [hasVotedPoll, setHasVotedPoll] = useState(false)
 
   useEffect(() => {
     if (!id) return
     Promise.all([
-      supabase.from('sessions').select('id,title,description,type,categories,allow_reactions,allow_replies,cover_image,created_at').eq('id', id).single(),
+      supabase.from('sessions').select('*').eq('id', id).single(),
       supabase.from('responses').select('*').eq('session_id', id).order('created_at', { ascending: false })
     ]).then(([{ data: s }, { data: r }]) => {
       if (!s) { setStatus('notfound'); return }
@@ -28,15 +31,27 @@ export default function Submit() {
       setResponses((r as Response[]) ?? [])
       setStatus('ready')
     })
-    const saved = localStorage.getItem(`votes_${id}`)
-    if (saved) setVoted(JSON.parse(saved))
+    const savedVotes = localStorage.getItem(`votes_${id}`)
+    if (savedVotes) setVoted(JSON.parse(savedVotes))
+    const savedPoll = localStorage.getItem(`poll_${id}`)
+    if (savedPoll) { setPollVote(savedPoll); setHasVotedPoll(true) }
   }, [id])
 
-  async function submit() {
+  async function submitPollVote(option: string) {
+    if (hasVotedPoll) return
+    setHasVotedPoll(true); setPollVote(option)
+    localStorage.setItem(`poll_${id}`, option)
+    await supabase.from('responses').insert({ session_id: id, text: option, category: 'poll', poll_choice: option, reactions: {} })
+    // refresh responses to show updated counts
+    const { data } = await supabase.from('responses').select('*').eq('session_id', id)
+    setResponses((data as Response[]) ?? [])
+  }
+
+  async function submitText() {
     if (!text.trim()) { setSubmitError('Please write something first.'); return }
     setStatus('submitting'); setSubmitError('')
-    const { error } = await supabase.from('responses').insert({ session_id: id, text: text.trim(), category, reactions: {} })
-    if (error) { setSubmitError('Something went wrong. Please try again.'); setStatus('ready'); return }
+    const { error } = await supabase.from('responses').insert({ session_id: id, text: text.trim(), category, poll_choice: '', reactions: {} })
+    if (error) { setSubmitError('Something went wrong. Try again.'); setStatus('ready'); return }
     setText(''); setStatus('success')
   }
 
@@ -51,33 +66,36 @@ export default function Submit() {
   }
 
   const typeInfo = session ? SESSION_TYPES[session.type] : null
+  const isPoll = session?.type === 'poll'
+
+  // Poll vote tallies
+  const pollTotals: Record<string, number> = {}
+  if (isPoll && session?.poll_options) {
+    session.poll_options.forEach(o => { pollTotals[o] = 0 })
+    responses.forEach(r => { if (r.poll_choice) pollTotals[r.poll_choice] = (pollTotals[r.poll_choice] ?? 0) + 1 })
+  }
+  const totalVotes = Object.values(pollTotals).reduce((a, b) => a + b, 0)
 
   if (status === 'loading') return (
     <div className="page" style={{ alignItems: 'center', justifyContent: 'center' }}>
       <span className="spinner" />
     </div>
   )
-
   if (status === 'notfound') return (
     <div className="page" style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-      <p style={{ fontSize: '2.5rem' }}>🔍</p>
-      <p style={{ fontWeight: 500, marginTop: '12px' }}>Session not found</p>
-      <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '6px' }}>This link may be expired or incorrect.</p>
+      <p style={{ fontSize: '3rem', marginBottom: '12px' }}>🔍</p>
+      <p style={{ fontWeight: 700, fontSize: '1.1rem' }}>Session not found</p>
+      <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '6px' }}>This link may be expired or incorrect.</p>
       <Credit />
     </div>
   )
-
   if (status === 'success') return (
     <div className="page" style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
       <div className="animate-in">
-        <p style={{ fontSize: '3rem' }}>✅</p>
-        <p style={{ fontWeight: 500, fontSize: '1.1rem', marginTop: '14px' }}>Submitted!</p>
-        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '8px', maxWidth: '300px', lineHeight: 1.6 }}>
-          Your response was recorded anonymously.
-        </p>
-        <button className="btn" style={{ marginTop: '1.5rem' }} onClick={() => setStatus('ready')}>
-          Submit another
-        </button>
+        <div style={{ fontSize: '3.5rem', marginBottom: '16px' }}>🎉</div>
+        <p style={{ fontWeight: 700, fontSize: '1.2rem', marginBottom: '8px' }}>Submitted!</p>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', maxWidth: '280px', lineHeight: 1.6 }}>Your response was recorded anonymously.</p>
+        <button className="btn" style={{ marginTop: '1.5rem' }} onClick={() => setStatus('ready')}>Submit another</button>
       </div>
       <Credit />
     </div>
@@ -86,91 +104,112 @@ export default function Submit() {
   return (
     <div className="page" style={{ padding: '0 0 5rem' }}>
 
-      {/* ── Cover image (full bleed, no side padding) ── */}
+      {/* Cover image */}
       {session?.cover_image && (
-        <div style={{ position: 'relative', width: '100%', height: '200px', marginBottom: '0' }}>
-          <img
-            src={session.cover_image}
-            alt="Session cover"
-            style={{ width: '100%', height: '200px', objectFit: 'cover', display: 'block' }}
-          />
-          {/* gradient overlay so wordmark stays readable */}
-          <div style={{
-            position: 'absolute', inset: 0,
-            background: 'linear-gradient(to bottom, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0) 60%)',
-          }} />
-          <p style={{
-            position: 'absolute', top: '16px', left: '20px',
-            fontFamily: 'var(--font-display)', fontStyle: 'italic',
-            fontSize: '1.3rem', color: '#fff', letterSpacing: '-0.01em',
-          }}>
-            Whispr
-          </p>
+        <div style={{ position: 'relative', width: '100%', height: '220px' }}>
+          <img src={session.cover_image} alt="Cover" style={{ width: '100%', height: '220px', objectFit: 'cover', display: 'block' }} />
+          <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, rgba(13,13,15,0.5) 0%, rgba(13,13,15,0) 50%, rgba(13,13,15,0.8) 100%)' }} />
+          <p style={{ position: 'absolute', top: '16px', left: '20px', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: '1.4rem', color: '#fff', letterSpacing: '-0.03em' }}>Whispr</p>
         </div>
       )}
 
       <div style={{ padding: '1.25rem 1.25rem 0' }}>
-
-        {/* Wordmark — only show if no cover image */}
         {!session?.cover_image && (
-          <div style={{ marginBottom: '1.25rem' }} className="animate-in">
-            <p className="wordmark">Whi<span>spr</span></p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }} className="animate-in">
+            <p className="wordmark">Whispr</p>
+            <ThemeToggle />
           </div>
         )}
 
-        {/* Session header card */}
-        <div className="card animate-in-d1" style={{ marginBottom: '10px', marginTop: session?.cover_image ? '12px' : '0' }}>
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '1.6rem', lineHeight: 1 }}>{typeInfo?.icon}</span>
+        {/* Session header */}
+        <div className="card-glow animate-in-d1" style={{ marginBottom: '14px', marginTop: session?.cover_image ? '12px' : 0 }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+            <span style={{ fontSize: '2rem', lineHeight: 1 }}>{typeInfo?.icon}</span>
             <div style={{ flex: 1 }}>
-              <span className={`tag ${typeInfo?.tagColor}`} style={{ marginBottom: '6px', display: 'inline-flex' }}>
-                {typeInfo?.label}
-              </span>
-              <p style={{ fontWeight: 500, fontSize: '1rem', lineHeight: 1.4 }}>{session?.title}</p>
-              {session?.description && (
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.55 }}>
-                  {session.description}
-                </p>
-              )}
+              <span className={`tag ${typeInfo?.color}`} style={{ marginBottom: '8px', display: 'inline-flex' }}>{typeInfo?.label}</span>
+              <p style={{ fontWeight: 700, fontSize: '1.1rem', lineHeight: 1.3, letterSpacing: '-0.02em' }}>{session?.title}</p>
+              {session?.description && <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '6px', lineHeight: 1.6 }}>{session.description}</p>}
+              {isPoll && <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '8px' }}>{totalVotes} vote{totalVotes !== 1 ? 's' : ''} so far</p>}
             </div>
           </div>
         </div>
 
-        {/* Submission form */}
-        <div className="card animate-in-d2" style={{ marginBottom: '16px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div className="field">
-              <label>Your response</label>
-              <textarea
-                placeholder={typeInfo?.placeholder ?? 'Type your response...'}
-                value={text}
-                onChange={e => setText(e.target.value)}
-              />
+        {/* ── POLL UI ── */}
+        {isPoll && session?.poll_options && (
+          <div className="animate-in-d2" style={{ marginBottom: '16px' }}>
+            <p className="section-label" style={{ marginBottom: '10px' }}>
+              {hasVotedPoll ? 'Results' : 'Cast your vote'}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {session.poll_options.map((option) => {
+                const count = pollTotals[option] ?? 0
+                const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0
+                const isMyVote = pollVote === option
+                const didVote = hasVotedPoll
+
+                return (
+                  <div
+                    key={option}
+                    className={`poll-option${isMyVote ? ' voted-this' : didVote ? ' voted-other' : ''}`}
+                    onClick={() => !didVote && submitPollVote(option)}
+                  >
+                    {/* Progress bar (shown after voting) */}
+                    {didVote && <div className="poll-bar" style={{ width: `${pct}%` }} />}
+
+                    {/* Radio circle */}
+                    <div className="poll-radio">
+                      <div className="poll-radio-dot" />
+                    </div>
+
+                    <span className="poll-option-label" style={{ position: 'relative' }}>{option}</span>
+
+                    {/* Percentage (after voting) */}
+                    {didVote && <span className="poll-pct" style={{ position: 'relative' }}>{pct}%</span>}
+                  </div>
+                )
+              })}
             </div>
-            {session?.categories && session.categories.length > 1 && (
-              <div className="field">
-                <label>Category</label>
-                <select value={category} onChange={e => setCategory(e.target.value)}>
-                  {session.categories.map(c => <option key={c}>{c}</option>)}
-                </select>
-              </div>
+            {hasVotedPoll && (
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '10px' }}>
+                ✓ Your vote is locked in · {totalVotes} total vote{totalVotes !== 1 ? 's' : ''}
+              </p>
             )}
           </div>
-          {submitError && <p className="error-text">{submitError}</p>}
-          <button className="btn btn-primary btn-full" style={{ marginTop: '12px' }} onClick={submit} disabled={status === 'submitting'}>
-            {status === 'submitting' ? <><span className="spinner spinner-white" /> Submitting...</> : 'Submit anonymously'}
-          </button>
-          <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '8px' }}>
-            No name · No number · No account
-          </p>
-        </div>
+        )}
 
-        {/* Public responses feed */}
-        {responses.length > 0 && session?.allow_reactions && (
+        {/* ── TEXT SUBMISSION (non-poll) ── */}
+        {!isPoll && (
+          <div className="card animate-in-d2" style={{ marginBottom: '16px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div className="field">
+                <label>Your response</label>
+                <textarea placeholder={typeInfo?.placeholder ?? 'Type your response...'} value={text} onChange={e => setText(e.target.value)} />
+              </div>
+              {session?.categories && session.categories.length > 1 && (
+                <div className="field">
+                  <label>Category</label>
+                  <select value={category} onChange={e => setCategory(e.target.value)}>
+                    {session.categories.map(c => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+            {submitError && <p className="error-text">{submitError}</p>}
+            <button className="btn btn-primary btn-full" style={{ marginTop: '12px' }} onClick={submitText} disabled={status === 'submitting'}>
+              {status === 'submitting' ? <><span className="spinner spinner-white" /> Submitting...</> : 'Submit anonymously'}
+            </button>
+            <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '8px' }}>
+              No name · No number · No account
+            </p>
+          </div>
+        )}
+
+        {/* Responses feed (non-poll) */}
+        {!isPoll && responses.length > 0 && session?.allow_reactions && (
           <>
             <p className="section-label">{responses.length} response{responses.length !== 1 ? 's' : ''}</p>
             {responses.map((r, i) => (
-              <div key={r.id} className="card animate-in" style={{ animationDelay: `${i * 0.035}s`, marginBottom: '10px' }}>
+              <div key={r.id} className="response-card" style={{ animationDelay: `${i * 0.04}s` }}>
                 <p style={{ fontSize: '0.9375rem', lineHeight: 1.65 }}>{r.text}</p>
                 {r.category && r.category !== 'General' && (
                   <span className="tag tag-gray" style={{ marginTop: '8px', display: 'inline-flex' }}>{r.category}</span>
@@ -180,12 +219,8 @@ export default function Submit() {
                     const count = r.reactions?.[emoji] ?? 0
                     const myVote = voted[r.id] === emoji
                     return (
-                      <button
-                        key={emoji}
-                        className={`react-btn${myVote ? ' active' : ''}`}
-                        onClick={() => react(r.id, emoji, r.reactions ?? {})}
-                        disabled={!!voted[r.id]}
-                      >
+                      <button key={emoji} className={`react-btn${myVote ? ' active' : ''}`}
+                        onClick={() => react(r.id, emoji, r.reactions ?? {})} disabled={!!voted[r.id]}>
                         {emoji} {count > 0 && <span>{count}</span>}
                       </button>
                     )
