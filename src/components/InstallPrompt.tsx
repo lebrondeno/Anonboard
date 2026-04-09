@@ -41,7 +41,7 @@ export default function InstallPrompt() {
   return (
     <div className="animate-in" style={{
       background: 'var(--accent-soft)',
-      border: '1px solid rgba(124,111,247,0.3)',
+      border: '1px solid rgba(79,70,229,0.2)', boxShadow: 'var(--shadow-md)',
       borderRadius: 'var(--radius-md)',
       padding: '12px 16px',
       marginBottom: '12px',

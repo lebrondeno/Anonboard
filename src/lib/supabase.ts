@@ -6,7 +6,17 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? 'placeholder-k
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 export const isConfigured = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY)
 
-export type SessionType = 'ideas' | 'suggestions' | 'discussion' | 'poll' | 'ama' | 'feedback'
+export type SessionType = 'ideas' | 'suggestions' | 'discussion' | 'poll' | 'ama' | 'feedback' | 'catchup' | 'survey'
+
+export type QuestionType = 'short' | 'long' | 'choice' | 'rating' | 'yesno'
+
+export type SurveyQuestion = {
+  id: string
+  text: string
+  type: QuestionType
+  options?: string[]   // for choice type
+  required: boolean
+}
 
 export type Session = {
   id: string
@@ -15,7 +25,8 @@ export type Session = {
   description: string
   type: SessionType
   categories: string[]
-  poll_options: string[]       // for poll type
+  poll_options: string[]
+  survey_questions: SurveyQuestion[]
   admin_token: string
   allow_reactions: boolean
   allow_replies: boolean
@@ -28,21 +39,59 @@ export type Response = {
   session_id: string
   text: string
   category: string
-  poll_choice: string          // for poll type
+  poll_choice: string
+  survey_answers: Record<string, string>  // questionId -> answer
   reactions: Record<string, number>
   created_at: string
 }
 
-export const SESSION_TYPES: Record<SessionType, { label: string; icon: string; desc: string; placeholder: string; color: string }> = {
-  ideas:       { label: 'Ideas',       icon: '💡', desc: 'Collect creative ideas',        placeholder: 'Share your idea...',                color: 'tag-blue'   },
-  suggestions: { label: 'Suggestions', icon: '📝', desc: 'Gather suggestions & feedback', placeholder: 'Write your suggestion...',           color: 'tag-green'  },
-  discussion:  { label: 'Discussion',  icon: '💬', desc: 'Open-ended discussion topic',   placeholder: 'Share your thoughts...',             color: 'tag-purple' },
-  poll:        { label: 'Poll',        icon: '📊', desc: 'Structured vote on options',    placeholder: '',                                   color: 'tag-amber'  },
-  ama:         { label: 'Q&A / AMA',   icon: '🙋', desc: 'Questions & answers',           placeholder: 'Ask your question anonymously...',   color: 'tag-gray'   },
-  feedback:    { label: 'Feedback',    icon: '⭐', desc: 'Rate or review something',      placeholder: 'Share your feedback...',             color: 'tag-pink'   },
+export type ChatMessage = {
+  id: string
+  session_id: string
+  anon_id: string
+  anon_name: string
+  anon_color: string
+  text: string
+  reply_to: string | null
+  reply_preview: string
+  reply_name: string
+  reactions: Record<string, number>
+  reactor_ids: Record<string, string[]>
+  is_pinned: boolean
+  created_at: string
 }
 
-export const REACTIONS = ['👍', '❤️', '🔥', '🤔', '👏']
+export const SESSION_TYPES: Record<SessionType, { label: string; icon: string; desc: string; placeholder: string; color: string }> = {
+  ideas:       { label: 'Ideas',       icon: '💡', desc: 'Collect creative ideas',           placeholder: 'Share your idea...',               color: 'tag-blue'   },
+  suggestions: { label: 'Suggestions', icon: '📝', desc: 'Gather suggestions & feedback',    placeholder: 'Write your suggestion...',          color: 'tag-green'  },
+  discussion:  { label: 'Discussion',  icon: '💬', desc: 'Open-ended discussion topic',      placeholder: 'Share your thoughts...',            color: 'tag-purple' },
+  poll:        { label: 'Poll',        icon: '📊', desc: 'Structured vote on options',       placeholder: '',                                  color: 'tag-amber'  },
+  ama:         { label: 'Q&A / AMA',   icon: '🙋', desc: 'Questions & answers',              placeholder: 'Ask your question anonymously...',  color: 'tag-gray'   },
+  feedback:    { label: 'Feedback',    icon: '⭐', desc: 'Rate or review something',         placeholder: 'Share your feedback...',            color: 'tag-pink'   },
+  catchup:     { label: 'Catch Up',    icon: '🎉', desc: "Anonymous group chat — let's talk!", placeholder: 'Say something...',                color: 'tag-purple' },
+  survey:      { label: 'Survey',      icon: '📋', desc: 'Multi-question form & feedback',   placeholder: '',                                  color: 'tag-blue'   },
+}
+
+export const REACTIONS = ['❤️', '😂', '🔥', '👍', '😮', '😢']
+
+const ADJECTIVES = ['Purple','Teal','Amber','Coral','Indigo','Crimson','Jade','Azure','Violet','Emerald','Scarlet','Golden','Silver','Cobalt','Magenta']
+const ANIMALS    = ['Fox','Bear','Wolf','Eagle','Tiger','Panda','Hawk','Lynx','Otter','Crane','Viper','Raven','Bison','Koala','Gecko']
+const COLORS     = ['#4F46E5','#059669','#D97706','#DC2626','#7C3AED','#0891B2','#065F46','#92400E','#1D4ED8','#9D174D','#1E40AF','#047857','#B45309','#991B1B','#6D28D9']
+
+export function getAnonIdentity(sessionId: string): { anon_id: string; anon_name: string; anon_color: string } {
+  const key = `anon_${sessionId}`
+  const saved = localStorage.getItem(key)
+  if (saved) return JSON.parse(saved)
+  const idx = Math.floor(Math.random() * 15)
+  const idx2 = Math.floor(Math.random() * 15)
+  const identity = {
+    anon_id: `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    anon_name: `${ADJECTIVES[idx]} ${ANIMALS[idx2]}`,
+    anon_color: COLORS[idx],
+  }
+  localStorage.setItem(key, JSON.stringify(identity))
+  return identity
+}
 
 export async function getCurrentUser() {
   const { data: { user } } = await supabase.auth.getUser()

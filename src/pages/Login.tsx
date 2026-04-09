@@ -41,7 +41,7 @@ export default function Login() {
     <div className="page" style={{ justifyContent: 'center', maxWidth: '420px' }}>
       <div className="animate-in" style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
         <Link to="/" style={{ textDecoration: 'none' }}>
-          <p className="wordmark" style={{ justifyContent: 'center', display: 'flex', fontSize: '2rem' }}>Whispr</p>
+          <p className="wordmark" style={{ display: 'block', textAlign: 'center', fontSize: '2.25rem' }}>Whispr</p>
         </Link>
         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '8px', fontWeight: 500 }}>
           {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your admin account' : 'Reset your password'}
@@ -81,13 +81,13 @@ export default function Login() {
         </div>
 
         {error && (
-          <div style={{ background: 'var(--red-soft)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginTop: '12px' }}>
-            <p style={{ fontSize: '0.84rem', color: 'var(--red-text)' }}>{error}</p>
+          <div style={{ background: 'var(--red-soft)', border: '1px solid rgba(220,38,38,0.15)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginTop: '12px' }}>
+            <p style={{ fontSize: '0.84rem', color: 'var(--red-text)', lineHeight: 1.5 }}>{error}</p>
           </div>
         )}
         {success && (
-          <div style={{ background: 'var(--green-soft)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginTop: '12px' }}>
-            <p style={{ fontSize: '0.84rem', color: 'var(--green-text)' }}>{success}</p>
+          <div style={{ background: 'var(--green-soft)', border: '1px solid rgba(5,150,105,0.2)', borderRadius: 'var(--radius-sm)', padding: '10px 14px', marginTop: '12px' }}>
+            <p style={{ fontSize: '0.84rem', color: 'var(--green-text)', lineHeight: 1.5 }}>{success}</p>
           </div>
         )}
 

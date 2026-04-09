@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { supabase, SESSION_TYPES, REACTIONS } from '../lib/supabase'
 import type { Session, Response } from '../lib/supabase'
 import Credit from '../components/Credit'
@@ -9,6 +9,7 @@ type Status = 'loading' | 'ready' | 'submitting' | 'success' | 'notfound'
 
 export default function Submit() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const [session, setSession] = useState<Session | null>(null)
   const [responses, setResponses] = useState<Response[]>([])
   const [status, setStatus] = useState<Status>('loading')
@@ -26,6 +27,8 @@ export default function Submit() {
       supabase.from('responses').select('*').eq('session_id', id).order('created_at', { ascending: false })
     ]).then(([{ data: s }, { data: r }]) => {
       if (!s) { setStatus('notfound'); return }
+      if ((s as Session).type === 'catchup') { navigate(`/chat/${id}`, { replace: true }); return }
+      if ((s as Session).type === 'survey') { navigate(`/survey/${id}`, { replace: true }); return }
       setSession(s as Session)
       setCategory((s as Session).categories?.[0] ?? 'General')
       setResponses((r as Response[]) ?? [])

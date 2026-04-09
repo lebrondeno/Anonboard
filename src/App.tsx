@@ -1,12 +1,13 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './lib/AuthContext'
 import { ThemeProvider } from './lib/ThemeContext'
-import { Analytics } from '@vercel/analytics/react'
 import Home from './pages/Home'
 import Submit from './pages/Submit'
 import Admin from './pages/Admin'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import CatchUp from './pages/CatchUp'
+import Survey from './pages/Survey'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -20,6 +21,8 @@ function AppRoutes() {
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/s/:id" element={<Submit />} />
+      <Route path="/chat/:id" element={<CatchUp />} />
+      <Route path="/survey/:id" element={<Survey />} />
       <Route path="/admin/:id" element={<Admin />} />
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
     </Routes>
@@ -28,15 +31,12 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <>
-      <ThemeProvider>
-        <BrowserRouter>
-          <AuthProvider>
-            <AppRoutes />
-          </AuthProvider>
-        </BrowserRouter>
-      </ThemeProvider>
-      <Analytics />
-    </>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   )
 }

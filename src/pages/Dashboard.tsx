@@ -115,7 +115,7 @@ export default function Dashboard() {
 
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <Link to={`/admin/${s.id}`} className="btn btn-sm btn-primary">View responses</Link>
-                <button className="btn btn-sm" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/s/${s.id}`); }}>Copy link</button>
+                <button className="btn btn-sm" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/${s.type === 'catchup' ? 'chat' : s.type === 'survey' ? 'survey' : 's'}/${s.id}`); }}>Copy link</button>
                 <button className="btn btn-sm btn-danger" style={{ marginLeft: 'auto' }} onClick={() => deleteSession(s.id)}>Delete</button>
               </div>
             </div>
