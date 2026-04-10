@@ -50,19 +50,20 @@ export default function Dashboard() {
   )
 
   return (
-    <div className="page">
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }} className="animate-in">
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', position: 'relative', zIndex: 1 }}>
+      <header className="topbar">
         <div>
           <p className="wordmark">Whispr</p>
-          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '4px', fontWeight: 500 }}>{user?.email}</p>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px', fontWeight: 500 }}>{user?.email}</p>
         </div>
-        <div style={{ display: 'flex', gap: '8px', marginTop: '4px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <ThemeToggle />
           <ThemeToggle />
           <Link to="/" className="btn btn-sm btn-green">+ New</Link>
           <button className="btn btn-sm btn-ghost" onClick={signOut}>Sign out</button>
         </div>
-      </div>
+      </header>
+      <main style={{ maxWidth: 'var(--page-max)', margin: '0 auto', padding: '2rem var(--page-pad) 6rem' }}>
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '24px' }} className="animate-in-d1">
@@ -84,11 +85,11 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="animate-in-d2">
+      <div className="dashboard-grid animate-in-d2">
         {sessions.map((s, i) => {
           const typeInfo = SESSION_TYPES[s.type]
           return (
-            <div key={s.id} className="card" style={{ marginBottom: '10px', transition: 'all 0.2s', animationDelay: `${i * 0.05}s` }}
+            <div key={s.id} className="card" style={{ transition: 'all 0.2s', animationDelay: `${i * 0.05}s` }}
               onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = 'var(--border-bright)'}
               onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)'}
             >
@@ -123,6 +124,7 @@ export default function Dashboard() {
         })}
       </div>
 
+      </main>
       <Credit />
     </div>
   )

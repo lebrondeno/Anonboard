@@ -8,6 +8,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import CatchUp from './pages/CatchUp'
 import Survey from './pages/Survey'
+import Create from './pages/Create'
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth()
@@ -20,6 +21,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/create/:type" element={<Create />} />
       <Route path="/s/:id" element={<Submit />} />
       <Route path="/chat/:id" element={<CatchUp />} />
       <Route path="/survey/:id" element={<Survey />} />

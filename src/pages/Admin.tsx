@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase, SESSION_TYPES } from '../lib/supabase'
 import type { Session, Response, ChatMessage, SurveyQuestion } from '../lib/supabase'
 import { exportSession } from '../lib/exportExcel'
+import WAStatusCard from '../components/WAStatusCard'
 import Credit from '../components/Credit'
 import ThemeToggle from '../components/ThemeToggle'
 
@@ -18,6 +19,7 @@ export default function Admin() {
   const [copyMsg, setCopyMsg] = useState('')
   const [isAdmin, setIsAdmin] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [showWACard, setShowWACard] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -166,6 +168,7 @@ export default function Admin() {
               👑 Join as Host
             </Link>
           )}
+          <button className="btn btn-sm" onClick={() => setShowWACard(true)} style={{ background: '#25D366', color: '#fff', borderColor: '#25D366' }}>📲 Status Card</button>
           <button className="btn btn-sm btn-green" onClick={handleExport} disabled={exporting}>
             {exporting ? <><span className="spinner" style={{ width: 14, height: 14, borderTopColor: 'var(--green)' }} /> Exporting...</> : '⬇ Export Excel'}
           </button>
@@ -388,6 +391,9 @@ export default function Admin() {
         </>
       )}
 
+      {showWACard && session && (
+        <WAStatusCard session={session} shareUrl={shareUrl} onClose={() => setShowWACard(false)} />
+      )}
       <Credit />
     </div>
   )
