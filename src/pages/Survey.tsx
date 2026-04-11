@@ -47,7 +47,7 @@ export default function Survey() {
     })
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
-      setSubmitError('Please answer all required questions.')
+      setSubmitError('A few questions still need an answer.')
       return
     }
     setStatus('submitting'); setSubmitError('')
@@ -55,7 +55,7 @@ export default function Survey() {
       session_id: id, text: 'survey', category: 'survey',
       poll_choice: '', survey_answers: answers, reactions: {}
     })
-    if (error) { setSubmitError('Something went wrong. Please try again.'); setStatus('ready'); return }
+    if (error) { setSubmitError('Something went sideways. Try again?'); setStatus('ready'); return }
     markSubmitted(id!)
     setStatus('success')
   }
@@ -227,7 +227,7 @@ export default function Survey() {
       {submitError && <p className="error-text" style={{ marginBottom: '12px' }}>{submitError}</p>}
 
       <button className="btn btn-primary btn-full animate-in-d3" onClick={submit} disabled={status === 'submitting'}>
-        {status === 'submitting' ? <><span className="spinner spinner-white" /> Submitting...</> : 'Submit anonymously →'}
+        {status === 'submitting' ? <><span className="spinner spinner-white" /> Submitting...</> : 'Submit →'}
       </button>
       <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '8px' }}>
         No name · No number · No account

@@ -65,13 +65,13 @@ export default function Admin() {
   }, [id])
 
   async function deleteResponse(rid: string) {
-    if (!confirm('Delete this response?')) return
+    if (!confirm('Remove this one?')) return
     await supabase.from('responses').delete().eq('id', rid)
     setResponses(prev => prev.filter(r => r.id !== rid))
   }
 
   async function deleteMessage(mid: string) {
-    if (!confirm('Delete this message?')) return
+    if (!confirm('Remove this message?')) return
     await supabase.from('chat_messages').delete().eq('id', mid)
     setMessages(prev => prev.filter(m => m.id !== mid))
   }
@@ -156,9 +156,12 @@ export default function Admin() {
           <img src={session.cover_image} alt="" style={{ width: '100%', height: '90px', objectFit: 'cover', borderRadius: 'var(--radius-sm)', marginBottom: '14px', boxShadow: 'var(--shadow-sm)' }} />
         )}
         <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-          <IconPill type={session?.type ?? 'ideas'} size={44} />
+          <IconPill type={(session?.type ?? 'openfloor') as any} size={44} />
           <div style={{ flex: 1 }}>
-            <span className={`tag ${typeInfo?.color}`} style={{ marginBottom: '6px', display: 'inline-flex' }}>{typeInfo?.label}</span>
+            <div style={{ display:'flex', gap:'6px', flexWrap:'wrap', marginBottom:'6px' }}>
+              <span className={`tag ${typeInfo?.color}`}>{typeInfo?.label}</span>
+              {session?.framing_mode && <span className="tag tag-gray">{session.framing_mode}</span>}
+            </div>
             <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.1rem', letterSpacing: '-0.03em', lineHeight: 1.2, color: 'var(--text-primary)' }}>{session?.title}</p>
             {session?.description && <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.5 }}>{session.description}</p>}
           </div>

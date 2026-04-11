@@ -16,8 +16,8 @@ export default function Login() {
   const [success, setSuccess] = useState('')
 
   async function handleSubmit() {
-    if (!email.trim()) { setError('Please enter your email.'); return }
-    if (mode !== 'reset' && !password.trim()) { setError('Please enter your password.'); return }
+    if (!email.trim()) { setError('Your email, please.'); return }
+    if (mode !== 'reset' && !password.trim()) { setError('Password too.'); return }
     setLoading(true); setError(''); setSuccess('')
 
     if (mode === 'login') {
@@ -44,7 +44,7 @@ export default function Login() {
           <p className="wordmark" style={{ display: 'block', textAlign: 'center', fontSize: '2.25rem', fontStyle: 'italic' }}>Whispr</p>
         </Link>
         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '8px', fontWeight: 500 }}>
-          {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your admin account' : 'Reset your password'}
+          {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Let\'s get you set up.' : 'No worries — happens to everyone.'}
         </p>
       </div>
 
@@ -93,7 +93,7 @@ export default function Login() {
 
         <button className="btn btn-primary btn-full" style={{ marginTop: '16px' }} onClick={handleSubmit} disabled={loading}>
           {loading ? <><span className="spinner spinner-white" /> Please wait...</>
-            : mode === 'login' ? 'Log in →' : mode === 'signup' ? 'Create account →' : 'Send reset link'}
+            : mode === 'login' ? 'Sign in →' : mode === 'signup' ? 'Create account →' : 'Send me the link'}
         </button>
 
         {mode === 'login' && (

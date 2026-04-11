@@ -6,9 +6,11 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? 'placeholder-k
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 export const isConfigured = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY)
 
-export type SessionType = 'ideas' | 'suggestions' | 'discussion' | 'poll' | 'ama' | 'feedback' | 'catchup' | 'survey'
+export type SessionType = 'openfloor' | 'qa' | 'feedback' | 'poll' | 'survey' | 'catchup'
 
 export type QuestionType = 'short' | 'long' | 'choice' | 'rating' | 'yesno'
+export type FramingMode = 'ideas' | 'suggestions' | 'discussion'
+export type SuggestionStatus = 'open' | 'considering' | 'done' | 'not-now'
 
 export type SurveyQuestion = {
   id: string
@@ -37,6 +39,7 @@ export type Session = {
   slug: string | null
   pin: string | null
   member_theme: 'auto' | 'light' | 'dark'
+  framing_mode: string
   created_at: string
 }
 
@@ -85,14 +88,18 @@ export type ChatMessage = {
 }
 
 export const SESSION_TYPES: Record<SessionType, { label: string; icon: string; desc: string; placeholder: string; color: string }> = {
-  ideas:       { label: 'Ideas',       icon: '💡', desc: 'Collect creative ideas',           placeholder: 'Share your idea...',               color: 'tag-blue'   },
-  suggestions: { label: 'Suggestions', icon: '📝', desc: 'Gather suggestions & feedback',    placeholder: 'Write your suggestion...',          color: 'tag-green'  },
-  discussion:  { label: 'Discussion',  icon: '💬', desc: 'Open-ended discussion topic',      placeholder: 'Share your thoughts...',            color: 'tag-purple' },
-  poll:        { label: 'Poll',        icon: '📊', desc: 'Structured vote on options',       placeholder: '',                                  color: 'tag-amber'  },
-  ama:         { label: 'Q&A / AMA',   icon: '🙋', desc: 'Questions & answers',              placeholder: 'Ask your question anonymously...',  color: 'tag-gray'   },
-  feedback:    { label: 'Feedback',    icon: '⭐', desc: 'Rate or review something',         placeholder: 'Share your feedback...',            color: 'tag-pink'   },
-  catchup:     { label: 'Catch Up',    icon: '🎉', desc: "Anonymous group chat — let's talk!", placeholder: 'Say something...',                color: 'tag-purple' },
-  survey:      { label: 'Survey',      icon: '📋', desc: 'Multi-question form & feedback',   placeholder: '',                                  color: 'tag-blue'   },
+  openfloor: { label: 'Open Floor', icon: '💬', desc: 'Ideas, suggestions or open discussion', placeholder: "Say what's on your mind...", color: 'tag-blue' },
+  qa:        { label: 'Q&A',        icon: '🙋', desc: 'Ask questions, get real answers',       placeholder: 'Ask your question...',         color: 'tag-purple' },
+  feedback:  { label: 'Feedback',   icon: '⭐', desc: 'Honest ratings and reviews',            placeholder: 'Share your honest feedback...', color: 'tag-pink' },
+  poll:      { label: 'Poll',       icon: '📊', desc: 'Structured vote on clear options',      placeholder: '',                              color: 'tag-amber' },
+  survey:    { label: 'Survey',     icon: '📋', desc: 'Multi-question form, one submission',   placeholder: '',                              color: 'tag-teal' },
+  catchup:   { label: 'Catch Up',   icon: '🎉', desc: 'Live anonymous group chat',             placeholder: 'Say something...',              color: 'tag-green' },
+}
+
+export const FRAMING_MODES: Record<string, { label: string; desc: string; placeholder: string; icon: string }> = {
+  ideas:       { label: 'Ideas',       icon: '💡', desc: 'Collect creative ideas from your group',       placeholder: "Drop your idea here. The stranger the better." },
+  suggestions: { label: 'Suggestions', icon: '📝', desc: 'Gather what people would change or improve',   placeholder: 'What would you change or improve?' },
+  discussion:  { label: 'Discussion',  icon: '🔥', desc: 'Open topic — people share their thoughts',     placeholder: 'What do you think?' },
 }
 
 export const REACTIONS = ['❤️', '😂', '🔥', '👍', '😮', '😢']

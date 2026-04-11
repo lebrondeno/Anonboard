@@ -32,7 +32,7 @@ export default function Dashboard() {
   async function signOut() { await supabase.auth.signOut(); navigate('/login') }
 
   async function deleteSession(id: string) {
-    if (!confirm('Delete this session and all its responses?')) return
+    if (!confirm('Delete this session? All responses go with it.')) return
     // Delete cover image from storage if it exists
     const sess = sessions.find(s => s.id === id)
     if (sess?.cover_image) {

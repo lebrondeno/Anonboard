@@ -70,10 +70,10 @@ export default function Submit() {
   }
 
   async function submitText() {
-    if (!text.trim()) { setSubmitError('Please write something first.'); return }
+    if (!text.trim()) { setSubmitError('Say something first.'); return }
     // Rate limit: max 5 responses per device per session
     const count = getSubmissionCount(id ?? '')
-    if (count >= 5) { setSubmitError('You have reached the maximum number of responses for this session.'); return }
+    if (count >= 5) { setSubmitError('This session has hit its response limit — no more can be added.'); return }
     setStatus('submitting'); setSubmitError('')
     const { error } = await supabase.from('responses').insert({ session_id: id, text: text.trim(), category, poll_choice: '', reactions: {} })
     if (error) { setSubmitError('Something went wrong. Try again.'); setStatus('ready'); return }
@@ -172,7 +172,7 @@ export default function Submit() {
         {/* Session header */}
         <div className="card-glow animate-in-d1" style={{ marginBottom: '14px', marginTop: session?.cover_image ? '12px' : 0 }}>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-            <IconPill type={session?.type ?? 'ideas'} size={44} />
+            <IconPill type={(session?.type ?? 'openfloor') as any} size={44} />
             <div style={{ flex: 1 }}>
               <span className={`tag ${typeInfo?.color}`} style={{ marginBottom: '8px', display: 'inline-flex' }}>{typeInfo?.label}</span>
               <p style={{ fontWeight: 700, fontSize: '1.1rem', lineHeight: 1.3, letterSpacing: '-0.02em' }}>{session?.title}</p>
@@ -244,7 +244,7 @@ export default function Submit() {
             </div>
             {submitError && <p className="error-text">{submitError}</p>}
             <button className="btn btn-primary btn-full" style={{ marginTop: '12px' }} onClick={submitText} disabled={status === 'submitting'}>
-              {status === 'submitting' ? <><span className="spinner spinner-white" /> Submitting...</> : 'Submit anonymously'}
+              {status === 'submitting' ? <><span className="spinner spinner-white" /> Submitting...</> : 'Send it in'}
             </button>
             <p style={{ fontSize: '0.74rem', color: 'var(--text-muted)', textAlign: 'center', marginTop: '8px' }}>
               No name · No number · No account
