@@ -4,6 +4,7 @@ import { supabase, SESSION_TYPES, isConfigured } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import type { SessionType, SurveyQuestion, QuestionType } from '../lib/supabase'
 import ThemeToggle from '../components/ThemeToggle'
+import { SESSION_ICONS, getTypeColors } from '../components/SessionIcon'
 import Credit from '../components/Credit'
 
 const Q_TYPES: { value: QuestionType; label: string; icon: string }[] = [
@@ -40,6 +41,9 @@ export default function Create() {
   const [cats, setCats] = useState('')
   const [pollOptions, setPollOptions] = useState(['',''])
   const [surveyQs, setSurveyQs] = useState<SurveyQuestion[]>([newQ()])
+  const [slug, setSlug] = useState('')
+  const [pin, setPin] = useState('')
+  const [memberTheme, setMemberTheme] = useState<'auto'|'light'|'dark'>('auto')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -68,6 +72,8 @@ export default function Create() {
     if (sessionType === 'poll' && pollOptions.filter(o => o.trim()).length < 2) { setError('Add at least 2 options.'); return }
     if (sessionType === 'survey' && surveyQs.find(q => !q.text.trim())) { setError('All questions need text.'); return }
     if (uploading) { setError('Wait for image upload to finish.'); return }
+    if (slug.trim() && !/^[a-z0-9-]+$/.test(slug.trim())) { setError('Slug can only contain lowercase letters, numbers and hyphens.'); return }
+    if (pin.trim() && !/^\d{4}$/.test(pin.trim())) { setError('PIN must be exactly 4 digits.'); return }
     setLoading(true); setError('')
     const categories = cats.trim() ? cats.split(',').map(c => c.trim()).filter(Boolean) : ['General']
     const adminToken = crypto.randomUUID()
@@ -78,6 +84,10 @@ export default function Create() {
       admin_token: adminToken,
       allow_reactions: !['poll','survey'].includes(sessionType),
       allow_replies: false, cover_image: coverImage, user_id: user?.id ?? null,
+      is_closed: false, expires_at: null, max_responses: null,
+      slug: slug.trim() || null,
+      pin: pin.trim() || null,
+      member_theme: memberTheme,
     }).select().single()
     if (err || !data) { setError('Failed to create. ' + err?.message); setLoading(false); return }
     localStorage.setItem(`admin_${data.id}`, adminToken)
@@ -116,7 +126,7 @@ export default function Create() {
         <div className="animate-in" style={{ marginBottom: '1.5rem', padding: '1.5rem', borderRadius: 'var(--radius-xl)', background: `linear-gradient(135deg, ${accentColor}14, ${accentColor}06)`, border: `1px solid ${accentColor}22`, position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'absolute', top: -20, right: -20, fontSize: '5rem', opacity: 0.08, lineHeight: 1 }}>{typeInfo?.icon}</div>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: `${accentColor}18`, borderRadius: '20px', padding: '3px 12px', marginBottom: '10px', border: `1px solid ${accentColor}28` }}>
-            <span style={{ fontSize: '1rem' }}>{typeInfo?.icon}</span>
+            {(() => { const Icon = SESSION_ICONS[sessionType]; const colors = getTypeColors(sessionType); return <Icon size={18} color={colors.icon} strokeWidth={2} /> })()}
             <span style={{ fontSize: '0.75rem', fontWeight: 700, color: accentColor, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{typeInfo?.label}</span>
           </div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 'clamp(1.3rem, 4vw, 1.75rem)', fontWeight: 700, letterSpacing: '-0.03em', color: 'var(--text-primary)', lineHeight: 1.2, marginBottom: '6px' }}>
@@ -225,6 +235,44 @@ export default function Create() {
                 <span className="hint">Comma-separated. Helps you filter responses later.</span>
               </div>
             )}
+
+            {/* Advanced settings */}
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '18px' }}>
+              <p className="section-label" style={{ marginBottom: '14px' }}>Advanced settings</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+
+                <div className="field">
+                  <label>Custom URL slug <span style={{ fontWeight:400, color:'var(--text-muted)', textTransform:'none', letterSpacing:0 }}>(optional)</span></label>
+                  <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                    <span style={{ fontSize:'.84rem', color:'var(--text-muted)', flexShrink:0, fontFamily:'monospace' }}>whispr.app/s/</span>
+                    <input type="text" placeholder="my-topic" value={slug} onChange={e => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g,''))}
+                      style={{ flex:1, background:'var(--bg2)', border:'1px solid var(--border-md)', borderRadius:'var(--radius-sm)', padding:'8px 12px', fontSize:'.875rem', color:'var(--text-primary)', fontFamily:'monospace', outline:'none' }} />
+                  </div>
+                  <span className="hint">Letters, numbers and hyphens only. Leave blank for auto-generated.</span>
+                </div>
+
+                <div className="field">
+                  <label>Access PIN <span style={{ fontWeight:400, color:'var(--text-muted)', textTransform:'none', letterSpacing:0 }}>(optional)</span></label>
+                  <input type="text" inputMode="numeric" maxLength={4} placeholder="e.g. 1234" value={pin}
+                    onChange={e => setPin(e.target.value.replace(/\D/g,'').slice(0,4))}
+                    style={{ width:'120px', background:'var(--bg2)', border:'1px solid var(--border-md)', borderRadius:'var(--radius-sm)', padding:'8px 14px', fontSize:'1.1rem', color:'var(--text-primary)', fontFamily:'monospace', outline:'none', letterSpacing:'.2em', textAlign:'center' }} />
+                  <span className="hint">Members must enter this 4-digit PIN before responding.</span>
+                </div>
+
+                <div className="field">
+                  <label>Member page theme</label>
+                  <div style={{ display:'flex', gap:'8px' }}>
+                    {(['auto','light','dark'] as const).map(t => (
+                      <button key={t} type="button" onClick={() => setMemberTheme(t)}
+                        style={{ padding:'7px 16px', borderRadius:'var(--radius-sm)', border:`1.5px solid ${memberTheme===t ? 'var(--accent)' : 'var(--border-md)'}`, background: memberTheme===t ? 'var(--accent-soft)' : 'var(--surface2)', cursor:'pointer', fontSize:'.84rem', fontWeight: memberTheme===t ? 600 : 400, color: memberTheme===t ? 'var(--accent-text)' : 'var(--text-secondary)', fontFamily:'var(--font-body)' }}>
+                        {t === 'auto' ? '🖥 Auto' : t === 'light' ? '☀️ Light' : '🌙 Dark'}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="hint">Forces the member-facing page to this theme regardless of their device setting.</span>
+                </div>
+              </div>
+            </div>
 
             {/* Cover image */}
             <div className="field">

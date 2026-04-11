@@ -84,3 +84,49 @@ alter publication supabase_realtime add table chat_messages;
 -- alter table sessions add column if not exists survey_questions jsonb default '[]';
 -- alter table responses add column if not exists survey_answers jsonb default '{}';
 -- alter table chat_messages add column if not exists is_pinned boolean default false;
+
+-- =============================================
+-- v14 fixes — run these if upgrading
+-- =============================================
+-- alter table sessions add column if not exists is_closed boolean default false;
+-- alter table sessions add column if not exists expires_at timestamptz default null;
+-- alter table sessions add column if not exists max_responses integer default null;
+
+-- =============================================
+-- v16 additions — run in Supabase SQL Editor
+-- =============================================
+
+-- New session fields
+alter table sessions add column if not exists slug text unique default null;
+alter table sessions add column if not exists pin text default null;
+alter table sessions add column if not exists member_theme text default 'auto';
+
+-- Anonymous reply threads (for Ideas/Discussion/AMA etc)
+create table if not exists response_replies (
+  id uuid primary key default gen_random_uuid(),
+  response_id uuid references responses(id) on delete cascade,
+  session_id uuid references sessions(id) on delete cascade,
+  text text not null,
+  anon_name text not null,
+  anon_color text not null default '#4F46E5',
+  created_at timestamptz default now()
+);
+alter table response_replies enable row level security;
+create policy "Public read replies"   on response_replies for select using (true);
+create policy "Public insert replies" on response_replies for insert with check (true);
+alter publication supabase_realtime add table response_replies;
+
+-- Admin notes per response (private, admin only)
+create table if not exists admin_notes (
+  id uuid primary key default gen_random_uuid(),
+  response_id uuid unique references responses(id) on delete cascade,
+  note text not null default '',
+  created_at timestamptz default now()
+);
+alter table admin_notes enable row level security;
+create policy "Public read notes"   on admin_notes for select using (true);
+create policy "Public upsert notes" on admin_notes for insert with check (true);
+create policy "Public update notes" on admin_notes for update using (true);
+
+-- Index for slug lookups
+create index if not exists sessions_slug_idx on sessions(slug) where slug is not null;

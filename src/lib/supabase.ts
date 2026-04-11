@@ -31,6 +31,12 @@ export type Session = {
   allow_reactions: boolean
   allow_replies: boolean
   cover_image: string
+  is_closed: boolean
+  expires_at: string | null
+  max_responses: number | null
+  slug: string | null
+  pin: string | null
+  member_theme: 'auto' | 'light' | 'dark'
   created_at: string
 }
 
@@ -42,6 +48,23 @@ export type Response = {
   poll_choice: string
   survey_answers: Record<string, string>  // questionId -> answer
   reactions: Record<string, number>
+  created_at: string
+}
+
+export type ResponseReply = {
+  id: string
+  response_id: string
+  session_id: string
+  text: string
+  anon_name: string
+  anon_color: string
+  created_at: string
+}
+
+export type AdminNote = {
+  id: string
+  response_id: string
+  note: string
   created_at: string
 }
 

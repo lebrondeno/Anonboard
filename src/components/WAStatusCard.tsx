@@ -29,7 +29,17 @@ export default function WAStatusCard({ session, shareUrl, onClose }: Props) {
 
   const displayPrompt = customPrompt.trim() || prompt
 
-  useEffect(() => { renderCard() }, [theme, displayPrompt, session])
+  useEffect(() => {
+    // Preload fonts so canvas renders them correctly
+    async function preload() {
+      try {
+        await document.fonts.load('700 32px "Instrument Serif"')
+        await document.fonts.load('600 34px "DM Sans"')
+      } catch {}
+      renderCard()
+    }
+    preload()
+  }, [theme, displayPrompt, session])
 
   async function renderCard() {
     const canvas = canvasRef.current; if (!canvas) return

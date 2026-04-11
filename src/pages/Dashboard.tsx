@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { supabase, SESSION_TYPES } from '../lib/supabase'
-import type { Session } from '../lib/supabase'
+import { IconPill } from '../components/SessionIcon'
+import type { Session, SessionType } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import Credit from '../components/Credit'
 import ThemeToggle from '../components/ThemeToggle'
@@ -32,8 +33,43 @@ export default function Dashboard() {
 
   async function deleteSession(id: string) {
     if (!confirm('Delete this session and all its responses?')) return
+    // Delete cover image from storage if it exists
+    const sess = sessions.find(s => s.id === id)
+    if (sess?.cover_image) {
+      try {
+        const url = new URL(sess.cover_image)
+        const path = url.pathname.split('/object/public/covers/')[1]
+        if (path) await supabase.storage.from('covers').remove([path])
+      } catch {}
+    }
     await supabase.from('sessions').delete().eq('id', id)
     setSessions(prev => prev.filter(s => s.id !== id))
+  }
+
+  async function cloneSession(s: Session) {
+    const adminToken = crypto.randomUUID()
+    const { data, error } = await supabase.from('sessions').insert({
+      title: `${s.title} (copy)`,
+      description: s.description,
+      type: s.type,
+      categories: s.categories,
+      poll_options: s.poll_options,
+      survey_questions: s.survey_questions,
+      admin_token: adminToken,
+      allow_reactions: s.allow_reactions,
+      allow_replies: s.allow_replies,
+      cover_image: s.cover_image,
+      user_id: user?.id ?? null,
+      is_closed: false,
+      expires_at: null,
+      max_responses: null,
+      slug: null,
+      pin: s.pin,
+      member_theme: s.member_theme,
+    }).select().single()
+    if (error || !data) { alert('Could not clone session'); return }
+    localStorage.setItem(`admin_${data.id}`, adminToken)
+    await fetchSessions()
   }
 
   function timeAgo(d: string) {
@@ -97,7 +133,7 @@ export default function Dashboard() {
                 <img src={s.cover_image} alt="" style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: 'var(--radius-sm)', marginBottom: '12px' }} />
               )}
               <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-                <span style={{ fontSize: '1.3rem', lineHeight: 1, marginTop: '2px' }}>{typeInfo?.icon}</span>
+                <IconPill type={s.type as SessionType} size={38} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '4px', flexWrap: 'wrap' }}>
                     <span className={`tag ${typeInfo?.color}`}>{typeInfo?.label}</span>
@@ -117,6 +153,7 @@ export default function Dashboard() {
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <Link to={`/admin/${s.id}`} className="btn btn-sm btn-primary">View responses</Link>
                 <button className="btn btn-sm" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/${s.type === 'catchup' ? 'chat' : s.type === 'survey' ? 'survey' : 's'}/${s.id}`); }}>Copy link</button>
+                <button className="btn btn-sm btn-ghost" onClick={() => cloneSession(s)} title="Duplicate this session with same settings, fresh responses">⧉ Clone</button>
                 <button className="btn btn-sm btn-danger" style={{ marginLeft: 'auto' }} onClick={() => deleteSession(s.id)}>Delete</button>
               </div>
             </div>

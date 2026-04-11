@@ -35,7 +35,11 @@ export default function CatchUp() {
       supabase.from('chat_messages').select('*').eq('session_id', id).order('created_at', { ascending: true })
     ]).then(([{ data: s }, { data: m }]) => {
       if (!s) { setStatus('notfound'); return }
-      setSession(s as Session)
+      const sess = s as Session
+      setSession(sess)
+      if (sess.member_theme && sess.member_theme !== 'auto') {
+        document.documentElement.setAttribute('data-theme', sess.member_theme)
+      }
       setMessages((m as ChatMessage[]) ?? [])
       setStatus('ready')
     })
@@ -61,6 +65,11 @@ export default function CatchUp() {
 
   async function pushMessage(msgText: string) {
     if (!msgText.trim() || !id) return
+    // Cap at 500 messages per session
+    if (messages.length >= 500) {
+      alert('This chat has reached the 500 message limit. The admin can export and clear the history.')
+      return
+    }
     setSending(true)
     await supabase.from('chat_messages').insert({
       session_id: id,

@@ -4,12 +4,19 @@ import { supabase, SESSION_TYPES } from '../lib/supabase'
 import type { Session, Response, ChatMessage, SurveyQuestion } from '../lib/supabase'
 import { exportSession } from '../lib/exportExcel'
 import WAStatusCard from '../components/WAStatusCard'
+import { IconPill } from '../components/SessionIcon'
+import AdminNote from '../components/AdminNote'
+import ResponseChart from '../components/ResponseChart'
+import QRModal from '../components/QRModal'
+import { requestNotificationPermission, notifyNewResponse } from '../lib/notifications'
 import Credit from '../components/Credit'
+import { useAuth } from '../lib/AuthContext'
 import ThemeToggle from '../components/ThemeToggle'
 
 export default function Admin() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [session, setSession] = useState<Session | null>(null)
   const [responses, setResponses] = useState<Response[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -19,7 +26,9 @@ export default function Admin() {
   const [copyMsg, setCopyMsg] = useState('')
   const [isAdmin, setIsAdmin] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [search, setSearch] = useState('')
   const [showWACard, setShowWACard] = useState(false)
+  const [showQR, setShowQR] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -28,9 +37,14 @@ export default function Admin() {
       if (!data) { navigate('/'); return }
       const s = data as Session
       setSession(s)
-      if (token && token === s.admin_token) setIsAdmin(true)
+      // Admin if: localStorage token matches OR logged-in user owns the session
+      const tokenMatch = token && token === s.admin_token
+      const ownerMatch = user && user.id === s.user_id
+      if (tokenMatch || ownerMatch) setIsAdmin(true)
     })
     fetchData()
+    // Request notification permission
+    requestNotificationPermission()
   }, [id])
 
   const fetchData = useCallback(async () => {
@@ -39,9 +53,15 @@ export default function Admin() {
       supabase.from('responses').select('*').eq('session_id', id).order('created_at', { ascending: false }),
       supabase.from('chat_messages').select('*').eq('session_id', id).order('created_at', { ascending: true }),
     ])
-    setResponses((r as Response[]) ?? [])
+    const newResponses = (r as Response[]) ?? []
+    const prevCount = responses.length
+    setResponses(newResponses)
     setMessages((m as ChatMessage[]) ?? [])
     setLoading(false)
+    // Notify if new responses since last fetch
+    if (prevCount > 0 && newResponses.length > prevCount && session) {
+      notifyNewResponse(session.title, newResponses.length)
+    }
   }, [id])
 
   async function deleteResponse(rid: string) {
@@ -65,6 +85,13 @@ export default function Admin() {
     const path = session?.type === 'catchup' ? 'chat' : session?.type === 'survey' ? 'survey' : 's'
     navigator.clipboard.writeText(`${window.location.origin}/${path}/${id}`).catch(() => {})
     setCopyMsg('Copied!'); setTimeout(() => setCopyMsg(''), 2000)
+  }
+
+  async function toggleClose() {
+    if (!session) return
+    const newState = !session.is_closed
+    await supabase.from('sessions').update({ is_closed: newState }).eq('id', id)
+    setSession(prev => prev ? { ...prev, is_closed: newState } : prev)
   }
 
   async function handleExport() {
@@ -103,6 +130,7 @@ export default function Admin() {
 
   const allCats = [...new Set(responses.map(r => r.category).filter(c => c && c !== 'poll' && c !== 'survey'))]
   let filtered = filter ? responses.filter(r => r.category === filter) : responses.filter(r => !['poll', 'survey'].includes(r.category))
+  if (search.trim()) filtered = filtered.filter(r => r.text.toLowerCase().includes(search.toLowerCase()))
   if (sort === 'top') filtered = [...filtered].sort((a, b) => totalReactions(b) - totalReactions(a))
 
   const shareUrl = `${window.location.origin}/${isCatchUp ? 'chat' : isSurvey ? 'survey' : 's'}/${id}`
@@ -128,7 +156,7 @@ export default function Admin() {
           <img src={session.cover_image} alt="" style={{ width: '100%', height: '90px', objectFit: 'cover', borderRadius: 'var(--radius-sm)', marginBottom: '14px', boxShadow: 'var(--shadow-sm)' }} />
         )}
         <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
-          <span style={{ fontSize: '1.5rem' }}>{typeInfo?.icon}</span>
+          <IconPill type={session?.type ?? 'ideas'} size={44} />
           <div style={{ flex: 1 }}>
             <span className={`tag ${typeInfo?.color}`} style={{ marginBottom: '6px', display: 'inline-flex' }}>{typeInfo?.label}</span>
             <p style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: '1.1rem', letterSpacing: '-0.03em', lineHeight: 1.2, color: 'var(--text-primary)' }}>{session?.title}</p>
@@ -155,6 +183,18 @@ export default function Admin() {
         </div>
 
         {/* Share + actions */}
+        {/* Response over time chart */}
+        {!isCatchUp && !isPoll && responses.length > 0 && (
+          <div style={{ marginBottom: '14px', padding: '14px 16px', background: 'var(--bg2)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+            <ResponseChart dates={responses.map(r => r.created_at)} height={72} />
+          </div>
+        )}
+
+        {session?.is_closed && (
+          <div style={{ background: 'var(--red-soft)', border: '1px solid rgba(220,38,38,.2)', borderRadius: 'var(--radius-sm)', padding: '8px 14px', marginBottom: '12px', fontSize: '.84rem', color: 'var(--red-text)', fontWeight: 500 }}>
+            🔒 This session is closed — members cannot submit new responses.
+          </div>
+        )}
         <p className="section-label" style={{ marginBottom: '8px' }}>Share with your group</p>
         <div className="link-box" style={{ marginBottom: '10px' }}>
           <span className="link-text">{shareUrl}</span>
@@ -172,7 +212,17 @@ export default function Admin() {
           <button className="btn btn-sm btn-green" onClick={handleExport} disabled={exporting}>
             {exporting ? <><span className="spinner" style={{ width: 14, height: 14, borderTopColor: 'var(--green)' }} /> Exporting...</> : '⬇ Export Excel'}
           </button>
+          <button className="btn btn-sm btn-ghost" onClick={() => setShowQR(true)}>⬛ QR Code</button>
           <button className="btn btn-sm btn-ghost" onClick={fetchData}>↻ Refresh</button>
+          {isAdmin && (
+            <button
+              className={`btn btn-sm ${session?.is_closed ? 'btn-green' : 'btn-danger'}`}
+              onClick={toggleClose}
+              title={session?.is_closed ? 'Reopen session' : 'Close session — stops new responses'}
+            >
+              {session?.is_closed ? '🔓 Reopen' : '🔒 Close'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -359,6 +409,25 @@ export default function Admin() {
       {/* ── TEXT RESPONSES ── */}
       {!isPoll && !isCatchUp && !isSurvey && (
         <>
+          {/* Search bar */}
+          {responses.length > 4 && (
+            <div style={{ position: 'relative', marginBottom: '10px' }}>
+              <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontSize: '0.9rem', color: 'var(--text-muted)', pointerEvents: 'none' }}>🔍</span>
+              <input
+                type="text"
+                placeholder="Search responses..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{ width: '100%', background: 'var(--bg2)', border: '1px solid var(--border-md)', borderRadius: 'var(--radius-md)', padding: '9px 14px 9px 36px', fontSize: '0.875rem', color: 'var(--text-primary)', fontFamily: 'var(--font-body)', outline: 'none', boxShadow: 'inset 0 1px 2px rgba(0,0,0,.04)' }}
+                onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border-md)'}
+              />
+              {search && (
+                <button onClick={() => setSearch('')} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1rem', lineHeight: 1 }}>×</button>
+              )}
+            </div>
+          )}
+
           {responses.length > 0 && (
             <div style={{ display: 'flex', gap: '6px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
               <button className={`btn btn-xs${!filter ? ' btn-primary' : ''}`} onClick={() => setFilter('')}>All</button>
@@ -370,7 +439,13 @@ export default function Admin() {
             </div>
           )}
           {loading && <div style={{ textAlign: 'center', padding: '2rem' }}><span className="spinner" /></div>}
-          {!loading && filtered.length === 0 && <div className="empty-state"><p style={{ fontSize: '2rem' }}>💬</p><p>No responses yet.</p></div>}
+          {!loading && filtered.length === 0 && (
+            <div className="empty-state">
+              <p style={{ fontSize: '2rem' }}>{search ? '🔍' : '💬'}</p>
+              <p>{search ? `No responses match "${search}"` : 'No responses yet.'}</p>
+              {search && <button className="btn btn-sm" style={{ marginTop: '12px' }} onClick={() => setSearch('')}>Clear search</button>}
+            </div>
+          )}
           {filtered.map((r, i) => (
             <div key={r.id} className="response-card" style={{ animationDelay: `${i * 0.04}s` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
@@ -385,12 +460,20 @@ export default function Admin() {
                   ))}
                 </div>
               )}
-              {isAdmin && <div style={{ marginTop: '8px' }}><button className="btn btn-xs btn-danger" onClick={() => deleteResponse(r.id)}>Delete</button></div>}
+              {isAdmin && (
+                <div style={{ marginTop: '8px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                  <button className="btn btn-xs btn-danger" onClick={() => deleteResponse(r.id)}>Delete</button>
+                  <AdminNote responseId={r.id} />
+                </div>
+              )}
             </div>
           ))}
         </>
       )}
 
+      {showQR && (
+        <QRModal url={shareUrl} title={session?.title ?? 'Whispr Session'} onClose={() => setShowQR(false)} />
+      )}
       {showWACard && session && (
         <WAStatusCard session={session} shareUrl={shareUrl} onClose={() => setShowWACard(false)} />
       )}

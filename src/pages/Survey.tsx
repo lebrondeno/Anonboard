@@ -4,8 +4,10 @@ import { supabase } from '../lib/supabase'
 import type { Session, SurveyQuestion } from '../lib/supabase'
 import ThemeToggle from '../components/ThemeToggle'
 import Credit from '../components/Credit'
+import { PinGate } from './PinEntry'
+import { hasSubmitted, markSubmitted } from '../lib/fingerprint'
 
-type Status = 'loading' | 'ready' | 'submitting' | 'success' | 'notfound'
+type Status = 'loading' | 'pin' | 'ready' | 'submitting' | 'success' | 'notfound'
 
 const STARS = [1, 2, 3, 4, 5]
 
@@ -21,8 +23,13 @@ export default function Survey() {
     if (!id) return
     supabase.from('sessions').select('*').eq('id', id).single().then(({ data }) => {
       if (!data) { setStatus('notfound'); return }
-      setSession(data as Session)
-      setStatus('ready')
+      if (hasSubmitted(id!)) { setStatus('success'); return }
+      const sess = data as Session
+      setSession(sess)
+      if (sess.member_theme && sess.member_theme !== 'auto') {
+        document.documentElement.setAttribute('data-theme', sess.member_theme)
+      }
+      if (sess.pin) { setStatus('pin') } else { setStatus('ready') }
     })
   }, [id])
 
@@ -49,6 +56,7 @@ export default function Survey() {
       poll_choice: '', survey_answers: answers, reactions: {}
     })
     if (error) { setSubmitError('Something went wrong. Please try again.'); setStatus('ready'); return }
+    markSubmitted(id!)
     setStatus('success')
   }
 
@@ -57,6 +65,10 @@ export default function Survey() {
       <span className="spinner" />
     </div>
   )
+  if (status === 'pin' && session?.pin) return (
+    <PinGate correctPin={session.pin} onUnlock={() => setStatus('ready')} />
+  )
+
   if (status === 'notfound') return (
     <div className="page" style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
       <p style={{ fontSize: '3rem' }}>🔍</p>

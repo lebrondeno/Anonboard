@@ -3,9 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { supabase, SESSION_TYPES, REACTIONS } from '../lib/supabase'
 import type { Session, Response } from '../lib/supabase'
 import Credit from '../components/Credit'
+import { IconPill } from '../components/SessionIcon'
+import { PinGate } from './PinEntry'
+import { getSubmissionCount, incrementSubmissionCount } from '../lib/fingerprint'
 import ThemeToggle from '../components/ThemeToggle'
 
-type Status = 'loading' | 'ready' | 'submitting' | 'success' | 'notfound'
+type Status = 'loading' | 'pin' | 'ready' | 'submitting' | 'success' | 'notfound' | 'closed' | 'expired'
 
 export default function Submit() {
   const { id } = useParams<{ id: string }>()
@@ -22,17 +25,33 @@ export default function Submit() {
 
   useEffect(() => {
     if (!id) return
+    // Try by UUID first, then by slug
+    const isUUID = /^[0-9a-f-]{36}$/.test(id ?? '')
+    const sessionQuery = isUUID
+      ? supabase.from('sessions').select('*').eq('id', id).single()
+      : supabase.from('sessions').select('*').eq('slug', id).single()
+
     Promise.all([
-      supabase.from('sessions').select('*').eq('id', id).single(),
+      sessionQuery,
       supabase.from('responses').select('*').eq('session_id', id).order('created_at', { ascending: false })
     ]).then(([{ data: s }, { data: r }]) => {
       if (!s) { setStatus('notfound'); return }
-      if ((s as Session).type === 'catchup') { navigate(`/chat/${id}`, { replace: true }); return }
-      if ((s as Session).type === 'survey') { navigate(`/survey/${id}`, { replace: true }); return }
-      setSession(s as Session)
-      setCategory((s as Session).categories?.[0] ?? 'General')
-      setResponses((r as Response[]) ?? [])
-      setStatus('ready')
+      const sess = s as Session
+      if (sess.type === 'catchup') { navigate(`/chat/${id}`, { replace: true }); return }
+      if (sess.type === 'survey') { navigate(`/survey/${id}`, { replace: true }); return }
+      if (sess.is_closed) { setStatus('closed'); return }
+      if (sess.expires_at && new Date(sess.expires_at) < new Date()) { setStatus('expired'); return }
+      const rList = (r as Response[]) ?? []
+      if (sess.max_responses && rList.length >= sess.max_responses) { setStatus('closed'); return }
+      setSession(sess)
+      setCategory(sess.categories?.[0] ?? 'General')
+      setResponses(rList)
+      // Apply member theme
+      if (sess.member_theme && sess.member_theme !== 'auto') {
+        document.documentElement.setAttribute('data-theme', sess.member_theme)
+      }
+      // PIN gate
+      if (sess.pin) { setStatus('pin') } else { setStatus('ready') }
     })
     const savedVotes = localStorage.getItem(`votes_${id}`)
     if (savedVotes) setVoted(JSON.parse(savedVotes))
@@ -52,9 +71,13 @@ export default function Submit() {
 
   async function submitText() {
     if (!text.trim()) { setSubmitError('Please write something first.'); return }
+    // Rate limit: max 5 responses per device per session
+    const count = getSubmissionCount(id ?? '')
+    if (count >= 5) { setSubmitError('You have reached the maximum number of responses for this session.'); return }
     setStatus('submitting'); setSubmitError('')
     const { error } = await supabase.from('responses').insert({ session_id: id, text: text.trim(), category, poll_choice: '', reactions: {} })
     if (error) { setSubmitError('Something went wrong. Try again.'); setStatus('ready'); return }
+    incrementSubmissionCount(id ?? '')
     setText(''); setStatus('success')
   }
 
@@ -84,6 +107,28 @@ export default function Submit() {
       <span className="spinner" />
     </div>
   )
+  if (status === 'pin' && session?.pin) return (
+    <PinGate correctPin={session.pin} onUnlock={() => setStatus('ready')} />
+  )
+
+  if (status === 'closed') return (
+    <div className="page" style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+      <p style={{ fontSize: '2.5rem', marginBottom: '12px' }}>🔒</p>
+      <p style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-primary)' }}>Session closed</p>
+      <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '6px', lineHeight: 1.6 }}>This session is no longer accepting responses.</p>
+      <Credit />
+    </div>
+  )
+
+  if (status === 'expired') return (
+    <div className="page" style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+      <p style={{ fontSize: '2.5rem', marginBottom: '12px' }}>⏰</p>
+      <p style={{ fontWeight: 700, fontSize: '1.1rem', color: 'var(--text-primary)' }}>Session expired</p>
+      <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '6px', lineHeight: 1.6 }}>This session has passed its deadline.</p>
+      <Credit />
+    </div>
+  )
+
   if (status === 'notfound') return (
     <div className="page" style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
       <p style={{ fontSize: '3rem', marginBottom: '12px' }}>🔍</p>
@@ -127,7 +172,7 @@ export default function Submit() {
         {/* Session header */}
         <div className="card-glow animate-in-d1" style={{ marginBottom: '14px', marginTop: session?.cover_image ? '12px' : 0 }}>
           <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '2rem', lineHeight: 1 }}>{typeInfo?.icon}</span>
+            <IconPill type={session?.type ?? 'ideas'} size={44} />
             <div style={{ flex: 1 }}>
               <span className={`tag ${typeInfo?.color}`} style={{ marginBottom: '8px', display: 'inline-flex' }}>{typeInfo?.label}</span>
               <p style={{ fontWeight: 700, fontSize: '1.1rem', lineHeight: 1.3, letterSpacing: '-0.02em' }}>{session?.title}</p>

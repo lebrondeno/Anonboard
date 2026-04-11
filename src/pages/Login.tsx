@@ -41,7 +41,7 @@ export default function Login() {
     <div className="page" style={{ justifyContent: 'center', maxWidth: '420px' }}>
       <div className="animate-in" style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
         <Link to="/" style={{ textDecoration: 'none' }}>
-          <p className="wordmark" style={{ display: 'block', textAlign: 'center', fontSize: '2.25rem' }}>Whispr</p>
+          <p className="wordmark" style={{ display: 'block', textAlign: 'center', fontSize: '2.25rem', fontStyle: 'italic' }}>Whispr</p>
         </Link>
         <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '8px', fontWeight: 500 }}>
           {mode === 'login' ? 'Welcome back' : mode === 'signup' ? 'Create your admin account' : 'Reset your password'}
