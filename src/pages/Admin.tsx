@@ -8,6 +8,7 @@ import { IconPill } from '../components/SessionIcon'
 import AdminNote from '../components/AdminNote'
 import ResponseChart from '../components/ResponseChart'
 import QRModal from '../components/QRModal'
+import ShareModal from '../components/ShareModal'
 import { requestNotificationPermission, notifyNewResponse } from '../lib/notifications'
 import Credit from '../components/Credit'
 import { useAuth } from '../lib/AuthContext'
@@ -23,12 +24,12 @@ export default function Admin() {
   const [filter, setFilter] = useState('')
   const [sort, setSort] = useState<'newest' | 'top'>('newest')
   const [loading, setLoading] = useState(true)
-  const [copyMsg, setCopyMsg] = useState('')
   const [isAdmin, setIsAdmin] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [search, setSearch] = useState('')
   const [showWACard, setShowWACard] = useState(false)
   const [showQR, setShowQR] = useState(false)
+  const [showShare, setShowShare] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -81,11 +82,7 @@ export default function Admin() {
     setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, is_pinned: !m.is_pinned } : m))
   }
 
-  function copyLink() {
-    const path = session?.type === 'catchup' ? 'chat' : session?.type === 'survey' ? 'survey' : 's'
-    navigator.clipboard.writeText(`${window.location.origin}/${path}/${id}`).catch(() => {})
-    setCopyMsg('Copied!'); setTimeout(() => setCopyMsg(''), 2000)
-  }
+
 
   async function toggleClose() {
     if (!session) return
@@ -201,7 +198,7 @@ export default function Admin() {
         <p className="section-label" style={{ marginBottom: '8px' }}>Share with your group</p>
         <div className="link-box" style={{ marginBottom: '10px' }}>
           <span className="link-text">{shareUrl}</span>
-          <button className="btn btn-sm" onClick={copyLink}>{copyMsg || 'Copy link'}</button>
+          <button className="btn btn-sm" onClick={() => setShowShare(true)}>⬆ Share</button>
         </div>
 
         {/* Action buttons */}
@@ -474,6 +471,9 @@ export default function Admin() {
         </>
       )}
 
+      {showShare && session && (
+        <ShareModal url={shareUrl} title={session.title} description={session.description} onClose={() => setShowShare(false)} />
+      )}
       {showQR && (
         <QRModal url={shareUrl} title={session?.title ?? 'Whispr Session'} onClose={() => setShowQR(false)} />
       )}

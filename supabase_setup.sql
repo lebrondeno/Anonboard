@@ -130,3 +130,10 @@ create policy "Public update notes" on admin_notes for update using (true);
 
 -- Index for slug lookups
 create index if not exists sessions_slug_idx on sessions(slug) where slug is not null;
+
+-- v19 additions
+-- alter table responses add column if not exists anon_user_id uuid references auth.users(id) on delete set null default null;
+-- create index if not exists responses_anon_user_session_idx on responses(session_id, anon_user_id) where anon_user_id is not null;
+
+-- Enable anonymous sign-ins in Supabase:
+-- Go to Authentication > Settings > Enable anonymous sign-ins = ON

@@ -127,3 +127,39 @@ export async function getCurrentUser() {
   const { data: { user } } = await supabase.auth.getUser()
   return user
 }
+
+// ── Anonymous auth for cross-browser duplicate prevention ──
+export async function getOrCreateAnonSession(): Promise<string | null> {
+  try {
+    // Check if already have a session
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user) return session.user.id
+
+    // Create anonymous session — persists via httpOnly cookie
+    const { data, error } = await supabase.auth.signInAnonymously()
+    if (error || !data.user) return null
+    return data.user.id
+  } catch {
+    return null
+  }
+}
+
+export async function getAnonUserId(): Promise<string | null> {
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    return session?.user?.id ?? null
+  } catch {
+    return null
+  }
+}
+
+// Check if this anon user already submitted to this session
+export async function hasAnonSubmitted(sessionId: string, anonUserId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('responses')
+    .select('id')
+    .eq('session_id', sessionId)
+    .eq('anon_user_id', anonUserId)
+    .limit(1)
+  return (data?.length ?? 0) > 0
+}

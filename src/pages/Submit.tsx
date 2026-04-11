@@ -6,9 +6,10 @@ import Credit from '../components/Credit'
 import { IconPill } from '../components/SessionIcon'
 import { PinGate } from './PinEntry'
 import { getSubmissionCount, incrementSubmissionCount } from '../lib/fingerprint'
+import { getOrCreateAnonSession, hasAnonSubmitted } from '../lib/supabase'
 import ThemeToggle from '../components/ThemeToggle'
 
-type Status = 'loading' | 'pin' | 'ready' | 'submitting' | 'success' | 'notfound' | 'closed' | 'expired'
+type Status = 'loading' | 'pin' | 'ready' | 'submitting' | 'success' | 'notfound' | 'closed' | 'expired' | 'already_submitted'
 
 export default function Submit() {
   const { id } = useParams<{ id: string }>()
@@ -22,6 +23,7 @@ export default function Submit() {
   const [voted, setVoted] = useState<Record<string, string>>({})
   const [pollVote, setPollVote] = useState('')        // which poll option selected
   const [hasVotedPoll, setHasVotedPoll] = useState(false)
+  const [anonUserId, setAnonUserId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
@@ -34,7 +36,7 @@ export default function Submit() {
     Promise.all([
       sessionQuery,
       supabase.from('responses').select('*').eq('session_id', id).order('created_at', { ascending: false })
-    ]).then(([{ data: s }, { data: r }]) => {
+    ]).then(async ([{ data: s }, { data: r }]) => {
       if (!s) { setStatus('notfound'); return }
       const sess = s as Session
       if (sess.type === 'catchup') { navigate(`/chat/${id}`, { replace: true }); return }
@@ -46,11 +48,15 @@ export default function Submit() {
       setSession(sess)
       setCategory(sess.categories?.[0] ?? 'General')
       setResponses(rList)
-      // Apply member theme
       if (sess.member_theme && sess.member_theme !== 'auto') {
         document.documentElement.setAttribute('data-theme', sess.member_theme)
       }
-      // PIN gate
+      const anonId = await getOrCreateAnonSession()
+      setAnonUserId(anonId)
+      if (anonId) {
+        const already = await hasAnonSubmitted(id!, anonId)
+        if (already) { setStatus('already_submitted'); return }
+      }
       if (sess.pin) { setStatus('pin') } else { setStatus('ready') }
     })
     const savedVotes = localStorage.getItem(`votes_${id}`)
@@ -75,7 +81,7 @@ export default function Submit() {
     const count = getSubmissionCount(id ?? '')
     if (count >= 5) { setSubmitError('This session has hit its response limit — no more can be added.'); return }
     setStatus('submitting'); setSubmitError('')
-    const { error } = await supabase.from('responses').insert({ session_id: id, text: text.trim(), category, poll_choice: '', reactions: {} })
+    const { error } = await supabase.from('responses').insert({ session_id: id, text: text.trim(), category, poll_choice: '', reactions: {}, anon_user_id: anonUserId })
     if (error) { setSubmitError('Something went wrong. Try again.'); setStatus('ready'); return }
     incrementSubmissionCount(id ?? '')
     setText(''); setStatus('success')
@@ -109,6 +115,19 @@ export default function Submit() {
   )
   if (status === 'pin' && session?.pin) return (
     <PinGate correctPin={session.pin} onUnlock={() => setStatus('ready')} />
+  )
+
+  if (status === 'already_submitted') return (
+    <div className="page" style={{ alignItems:'center', justifyContent:'center', textAlign:'center' }}>
+      <div className="animate-in">
+        <p style={{ fontSize:'3rem', marginBottom:'14px' }}>✅</p>
+        <p style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', fontWeight:700, letterSpacing:'-.03em', color:'var(--text-primary)', marginBottom:'8px', fontStyle:'italic' }}>Already submitted.</p>
+        <p style={{ fontSize:'.9rem', color:'var(--text-secondary)', lineHeight:1.7, maxWidth:'280px' }}>
+          You've already responded to this session. Your answer is in and nothing is attached to you.
+        </p>
+      </div>
+      <Credit />
+    </div>
   )
 
   if (status === 'closed') return (

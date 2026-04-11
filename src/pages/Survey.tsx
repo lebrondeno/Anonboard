@@ -6,8 +6,9 @@ import ThemeToggle from '../components/ThemeToggle'
 import Credit from '../components/Credit'
 import { PinGate } from './PinEntry'
 import { hasSubmitted, markSubmitted } from '../lib/fingerprint'
+import { getOrCreateAnonSession, hasAnonSubmitted } from '../lib/supabase'
 
-type Status = 'loading' | 'pin' | 'ready' | 'submitting' | 'success' | 'notfound'
+type Status = 'loading' | 'pin' | 'ready' | 'submitting' | 'success' | 'notfound' | 'already_submitted'
 
 const STARS = [1, 2, 3, 4, 5]
 
@@ -15,22 +16,31 @@ export default function Survey() {
   const { id } = useParams<{ id: string }>()
   const [session, setSession] = useState<Session | null>(null)
   const [status, setStatus] = useState<Status>('loading')
+  const [anonUserId, setAnonUserId] = useState<string | null>(null)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [errors, setErrors] = useState<Record<string, boolean>>({})
   const [submitError, setSubmitError] = useState('')
 
   useEffect(() => {
     if (!id) return
-    supabase.from('sessions').select('*').eq('id', id).single().then(({ data }) => {
+    const init = async () => {
+      const { data } = await supabase.from('sessions').select('*').eq('id', id).single()
       if (!data) { setStatus('notfound'); return }
-      if (hasSubmitted(id!)) { setStatus('success'); return }
+      if (hasSubmitted(id!)) { setStatus('already_submitted'); return }
+      const anonId = await getOrCreateAnonSession()
+      setAnonUserId(anonId)
+      if (anonId) {
+        const already = await hasAnonSubmitted(id!, anonId)
+        if (already) { setStatus('already_submitted'); return }
+      }
       const sess = data as Session
       setSession(sess)
       if (sess.member_theme && sess.member_theme !== 'auto') {
         document.documentElement.setAttribute('data-theme', sess.member_theme)
       }
       if (sess.pin) { setStatus('pin') } else { setStatus('ready') }
-    })
+    }
+    init()
   }, [id])
 
   function setAnswer(qid: string, val: string) {
@@ -53,7 +63,7 @@ export default function Survey() {
     setStatus('submitting'); setSubmitError('')
     const { error } = await supabase.from('responses').insert({
       session_id: id, text: 'survey', category: 'survey',
-      poll_choice: '', survey_answers: answers, reactions: {}
+      poll_choice: '', survey_answers: answers, reactions: {}, anon_user_id: anonUserId
     })
     if (error) { setSubmitError('Something went sideways. Try again?'); setStatus('ready'); return }
     markSubmitted(id!)
@@ -76,6 +86,17 @@ export default function Survey() {
       <Credit />
     </div>
   )
+  if (status === 'already_submitted') return (
+    <div className="page" style={{ alignItems:'center', justifyContent:'center', textAlign:'center' }}>
+      <div className="animate-in">
+        <p style={{ fontSize:'3rem', marginBottom:'14px' }}>✅</p>
+        <p style={{ fontFamily:'var(--font-display)', fontSize:'1.4rem', fontWeight:700, letterSpacing:'-.03em', color:'var(--text-primary)', marginBottom:'8px', fontStyle:'italic' }}>Already submitted.</p>
+        <p style={{ fontSize:'.9rem', color:'var(--text-secondary)', lineHeight:1.7, maxWidth:'280px' }}>You've already filled this survey out. Your answers are safe — nothing is attached to you.</p>
+      </div>
+      <Credit />
+    </div>
+  )
+
   if (status === 'success') return (
     <div className="page" style={{ alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
       <div className="animate-in">

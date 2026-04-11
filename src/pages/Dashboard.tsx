@@ -6,6 +6,7 @@ import type { Session, SessionType } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import Credit from '../components/Credit'
 import ThemeToggle from '../components/ThemeToggle'
+import ShareModal from '../components/ShareModal'
 
 type SessionWithCount = Session & { response_count: number }
 
@@ -14,6 +15,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [sessions, setSessions] = useState<SessionWithCount[]>([])
   const [loading, setLoading] = useState(true)
+  const [shareSession, setShareSession] = useState<Session | null>(null)
 
   useEffect(() => {
     if (authLoading) return
@@ -70,6 +72,17 @@ export default function Dashboard() {
     if (error || !data) { alert('Could not clone session'); return }
     localStorage.setItem(`admin_${data.id}`, adminToken)
     await fetchSessions()
+  }
+
+  function activityStatus(s: SessionWithCount) {
+    if (s.is_closed) return { label: 'Closed', color: 'var(--text-faint)', dot: '#484860' }
+    if (s.response_count === 0) return { label: 'No responses', color: 'var(--text-faint)', dot: 'var(--border-lg)' }
+    const lastSeen = s.created_at // fallback; ideally use last response time
+    const diffMs = Date.now() - new Date(lastSeen).getTime()
+    const diffH = diffMs / (1000 * 60 * 60)
+    if (diffH < 1)  return { label: 'Hot right now', color: 'var(--red-text)',   dot: 'var(--red)'   }
+    if (diffH < 24) return { label: 'Active',        color: 'var(--amber-text)', dot: 'var(--amber)' }
+    return             { label: 'Quiet',           color: 'var(--text-muted)',  dot: 'var(--text-faint)' }
   }
 
   function timeAgo(d: string) {
@@ -138,6 +151,12 @@ export default function Dashboard() {
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '4px', flexWrap: 'wrap' }}>
                     <span className={`tag ${typeInfo?.color}`}>{typeInfo?.label}</span>
                     <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{timeAgo(s.created_at)}</span>
+                    {(() => { const a = activityStatus(s); return (
+                      <span style={{ display:'inline-flex', alignItems:'center', gap:'4px', fontSize:'.68rem', fontWeight:600, color:a.color }}>
+                        <span style={{ width:6, height:6, borderRadius:'50%', background:a.dot, display:'inline-block' }} />
+                        {a.label}
+                      </span>
+                    )})()}
                   </div>
                   <p style={{ fontWeight: 700, fontSize: '0.9375rem', lineHeight: 1.3, letterSpacing: '-0.02em' }}>{s.title}</p>
                   {s.description && <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.description}</p>}
@@ -152,7 +171,7 @@ export default function Dashboard() {
 
               <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                 <Link to={`/admin/${s.id}`} className="btn btn-sm btn-primary">View responses</Link>
-                <button className="btn btn-sm" onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/${s.type === 'catchup' ? 'chat' : s.type === 'survey' ? 'survey' : 's'}/${s.id}`); }}>Copy link</button>
+                <button className="btn btn-sm" onClick={() => setShareSession(s)}>⬆ Share</button>
                 <button className="btn btn-sm btn-ghost" onClick={() => cloneSession(s)} title="Duplicate this session with same settings, fresh responses">⧉ Clone</button>
                 <button className="btn btn-sm btn-danger" style={{ marginLeft: 'auto' }} onClick={() => deleteSession(s.id)}>Delete</button>
               </div>
@@ -162,6 +181,14 @@ export default function Dashboard() {
       </div>
 
       </main>
+      {shareSession && (
+        <ShareModal
+          url={`${window.location.origin}/${shareSession.type === 'catchup' ? 'chat' : shareSession.type === 'survey' ? 'survey' : 's'}/${shareSession.id}`}
+          title={shareSession.title}
+          description={shareSession.description}
+          onClose={() => setShareSession(null)}
+        />
+      )}
       <Credit />
     </div>
   )
