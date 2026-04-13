@@ -6,6 +6,8 @@ import type { Session, SessionType } from '../lib/supabase'
 import { useAuth } from '../lib/AuthContext'
 import Credit from '../components/Credit'
 import ThemeToggle from '../components/ThemeToggle'
+import { SessionCardSkeleton } from '../components/Skeleton'
+import { haptics } from '../lib/haptics'
 import ShareModal from '../components/ShareModal'
 
 type SessionWithCount = Session & { response_count: number }
@@ -71,6 +73,7 @@ export default function Dashboard() {
     }).select().single()
     if (error || !data) { alert('Could not clone session'); return }
     localStorage.setItem(`admin_${data.id}`, adminToken)
+    haptics.success()
     await fetchSessions()
   }
 
@@ -135,6 +138,7 @@ export default function Dashboard() {
       )}
 
       <div className="dashboard-grid animate-in-d2">
+        {loading && <>{Array.from({length:6}).map((_,i) => <SessionCardSkeleton key={i} />)}</>}
         {sessions.map((s, i) => {
           const typeInfo = SESSION_TYPES[s.type]
           return (

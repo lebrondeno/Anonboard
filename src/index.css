@@ -313,3 +313,107 @@ body,#root { min-height:100vh; background:var(--bg); font-family:var(--font-body
 .status-considering { background:var(--amber-soft); color:var(--amber-text); border:1px solid rgba(217,119,6,.2); }
 .status-done        { background:var(--green-soft);  color:var(--green-text);  border:1px solid rgba(5,150,105,.2); }
 .status-not-now     { background:var(--surface3);    color:var(--text-muted);  border:1px solid var(--border); }
+
+/* ── Skeleton ── */
+@keyframes skeletonPulse {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+
+/* ── Page transitions ── */
+.page-slide-in-right {
+  animation: slideInRight .3s cubic-bezier(.22,1,.36,1) both;
+}
+.page-slide-in-left {
+  animation: slideInLeft .3s cubic-bezier(.22,1,.36,1) both;
+}
+.page-fade-in {
+  animation: fadeUp .25s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes slideInRight {
+  from { transform: translateX(32px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes slideInLeft {
+  from { transform: translateX(-32px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+
+/* ── Pull to refresh indicator ── */
+.ptr-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  color: var(--text-muted);
+  font-size: .8rem;
+  font-family: var(--font-body);
+  font-weight: 500;
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height .2s ease;
+}
+.ptr-indicator.visible { max-height: 60px; }
+
+/* ── Bottom nav safe area ── */
+.has-bottom-nav { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)) !important; }
+
+/* ── Wizard steps ── */
+.wizard-progress {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 1.5rem;
+}
+.wizard-step {
+  flex: 1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border-lg);
+  transition: background .3s ease;
+}
+.wizard-step.done    { background: var(--accent); }
+.wizard-step.active  { background: var(--accent); opacity: 0.5; }
+
+/* ── Keyboard-aware input area ── */
+@supports (padding-bottom: env(keyboard-inset-height)) {
+  .keyboard-aware {
+    padding-bottom: env(keyboard-inset-height, 0px);
+    transition: padding-bottom .2s;
+  }
+}
+
+/* ── Haptic feedback visual (subtle scale) ── */
+.tap-feedback:active {
+  transform: scale(0.96) !important;
+  transition: transform .1s !important;
+}
+
+/* ── Keyboard-aware scroll behaviour ── */
+/* When virtual keyboard opens on mobile, page scrolls up correctly */
+html {
+  height: -webkit-fill-available;
+}
+body {
+  min-height: -webkit-fill-available;
+}
+
+/* Safe area padding for notched phones */
+.page { padding-bottom: max(6rem, calc(5rem + env(safe-area-inset-bottom))); }
+.topbar { padding-left: max(var(--page-pad), env(safe-area-inset-left)); padding-right: max(var(--page-pad), env(safe-area-inset-right)); }
+
+/* Bottom nav safe area */
+nav { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+
+/* Scrollbar styling — thin and subtle */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-lg); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
+
+/* Remove tap highlight on mobile */
+* { -webkit-tap-highlight-color: transparent; }
+
+/* Better touch targets */
+button, a { min-height: 44px; min-width: 44px; }
+.btn-xs, .tag { min-height: unset; min-width: unset; }

@@ -7,6 +7,7 @@ import { IconPill } from '../components/SessionIcon'
 import { PinGate } from './PinEntry'
 import { getSubmissionCount, incrementSubmissionCount } from '../lib/fingerprint'
 import { getOrCreateAnonSession, hasAnonSubmitted } from '../lib/supabase'
+import { haptics } from '../lib/haptics'
 import ThemeToggle from '../components/ThemeToggle'
 
 type Status = 'loading' | 'pin' | 'ready' | 'submitting' | 'success' | 'notfound' | 'closed' | 'expired' | 'already_submitted'
@@ -67,6 +68,7 @@ export default function Submit() {
 
   async function submitPollVote(option: string) {
     if (hasVotedPoll) return
+    haptics.success()
     setHasVotedPoll(true); setPollVote(option)
     localStorage.setItem(`poll_${id}`, option)
     await supabase.from('responses').insert({ session_id: id, text: option, category: 'poll', poll_choice: option, reactions: {} })
@@ -84,10 +86,12 @@ export default function Submit() {
     const { error } = await supabase.from('responses').insert({ session_id: id, text: text.trim(), category, poll_choice: '', reactions: {}, anon_user_id: anonUserId })
     if (error) { setSubmitError('Something went wrong. Try again.'); setStatus('ready'); return }
     incrementSubmissionCount(id ?? '')
+    haptics.success()
     setText(''); setStatus('success')
   }
 
   async function react(responseId: string, emoji: string, current: Record<string, number>) {
+    haptics.react()
     if (voted[responseId]) return
     const updated = { ...current, [emoji]: (current[emoji] ?? 0) + 1 }
     await supabase.from('responses').update({ reactions: updated }).eq('id', responseId)

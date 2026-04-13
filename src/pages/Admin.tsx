@@ -7,6 +7,8 @@ import WAStatusCard from '../components/WAStatusCard'
 import { IconPill } from '../components/SessionIcon'
 import AdminNote from '../components/AdminNote'
 import ResponseChart from '../components/ResponseChart'
+import { ResponseCardSkeleton } from '../components/Skeleton'
+import { haptics } from '../lib/haptics'
 import QRModal from '../components/QRModal'
 import ShareModal from '../components/ShareModal'
 import { requestNotificationPermission, notifyNewResponse } from '../lib/notifications'
@@ -67,6 +69,7 @@ export default function Admin() {
 
   async function deleteResponse(rid: string) {
     if (!confirm('Remove this one?')) return
+    haptics.heavy()
     await supabase.from('responses').delete().eq('id', rid)
     setResponses(prev => prev.filter(r => r.id !== rid))
   }
@@ -255,7 +258,7 @@ export default function Admin() {
           )}
 
           <p className="section-label">{messages.length} message{messages.length !== 1 ? 's' : ''}</p>
-          {loading && <div style={{ textAlign: 'center', padding: '2rem' }}><span className="spinner" /></div>}
+          {loading && <>{Array.from({length:3}).map((_,i) => <ResponseCardSkeleton key={i} />)}</>}
           {!loading && messages.length === 0 && <div className="empty-state"><p style={{ fontSize: '2rem' }}>💬</p><p>No messages yet.</p></div>}
           {[...messages].reverse().map((m, i) => (
             <div key={m.id} className="response-card" style={{ animationDelay: `${i * 0.03}s` }}>
@@ -289,7 +292,7 @@ export default function Admin() {
       {isSurvey && (
         <>
           <p className="section-label">{responses.length} submission{responses.length !== 1 ? 's' : ''}</p>
-          {loading && <div style={{ textAlign: 'center', padding: '2rem' }}><span className="spinner" /></div>}
+          {loading && <>{Array.from({length:3}).map((_,i) => <ResponseCardSkeleton key={i} />)}</>}
           {!loading && responses.length === 0 && <div className="empty-state"><p style={{ fontSize: '2rem' }}>📋</p><p>No submissions yet. Share the survey link!</p></div>}
 
           {surveyQuestions.map((q, qi) => {
@@ -438,7 +441,7 @@ export default function Admin() {
               </div>
             </div>
           )}
-          {loading && <div style={{ textAlign: 'center', padding: '2rem' }}><span className="spinner" /></div>}
+          {loading && <>{Array.from({length:3}).map((_,i) => <ResponseCardSkeleton key={i} />)}</>}
           {!loading && filtered.length === 0 && (
             <div className="empty-state">
               <p style={{ fontSize: '2rem' }}>{search ? '🔍' : '💬'}</p>
