@@ -111,7 +111,6 @@ export default function Dashboard() {
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <ThemeToggle />
           <ThemeToggle />
-          <Link to="/" className="btn btn-sm btn-green">+ New</Link>
           <button className="btn btn-sm btn-ghost" onClick={signOut}>Sign out</button>
         </div>
       </header>

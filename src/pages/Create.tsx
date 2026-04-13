@@ -445,10 +445,10 @@ export default function Create() {
 
       {/* ── Fixed bottom action bar ── */}
       <div style={{
-        position:'fixed', bottom:0, left:0, right:0,
+        position:'fixed', bottom:'64px', left:0, right:0,
         padding:'12px var(--page-pad)',
-        paddingBottom:'calc(12px + env(safe-area-inset-bottom, 0px))',
-        zIndex:90,
+        paddingBottom:'12px',
+        zIndex:110,
         borderTop:'1px solid var(--border)',
       }}>
         <div style={{ position:'absolute', inset:0, backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)' }} />

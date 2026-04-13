@@ -22,9 +22,7 @@ export default function Home() {
         </Link>
         <div style={{ display:'flex', gap:'8px', alignItems:'center' }}>
           <ThemeToggle />
-          {user
-            ? <Link to="/dashboard" className="btn btn-sm">My sessions</Link>
-            : <Link to="/login" className="btn btn-sm btn-primary">Sign in</Link>}
+          {!user && <Link to="/login" className="btn btn-sm btn-primary">Sign in</Link>}
         </div>
       </header>
 

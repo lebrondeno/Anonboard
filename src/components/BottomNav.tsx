@@ -4,60 +4,40 @@ import { useAuth } from '../lib/AuthContext'
 const NAV_ITEMS = [
   {
     id: 'home',
-    label: 'Explore',
+    label: 'Home',
     path: '/',
     icon: (active: boolean) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
         <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1V9.5z"
           stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}
           strokeLinecap="round" strokeLinejoin="round"
-          fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0}
+          fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.1 : 0}
         />
         <path d="M9 21V12h6v9" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8} strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     ),
   },
   {
-    id: 'create',
-    label: 'New',
-    path: '/create/openfloor',
-    icon: (_active: boolean) => (
-      <div style={{
-        width: 44, height: 44, borderRadius: '50%',
-        background: 'var(--accent)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        boxShadow: '0 4px 16px var(--accent-glow)',
-        marginBottom: 2,
-        transform: 'translateY(-8px)',
-      }}>
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path d="M12 5v14M5 12h14" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"/>
-        </svg>
-      </div>
-    ),
-    isCreate: true,
-  },
-  {
     id: 'dashboard',
-    label: 'Sessions',
+    label: 'My Sessions',
     path: '/dashboard',
     icon: (active: boolean) => (
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
         <rect x="3" y="3" width="7" height="7" rx="1.5"
           stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}
-          fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0}
+          fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0}
         />
         <rect x="14" y="3" width="7" height="7" rx="1.5"
           stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}
-          fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0}
+          fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0}
         />
         <rect x="3" y="14" width="7" height="7" rx="1.5"
           stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}
-          fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0}
+          fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0}
         />
         <rect x="14" y="14" width="7" height="7" rx="1.5"
           stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}
-          fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.15 : 0}
+          fill={active ? 'currentColor' : 'none'} fillOpacity={active ? 0.12 : 0}
         />
       </svg>
     ),
@@ -88,7 +68,7 @@ export default function BottomNav() {
   return (
     <>
       {/* Spacer so content isn't hidden behind nav */}
-      <div style={{ height: 72 }} />
+      <div style={{ height: 64 }} />
 
       <nav style={{
         position: 'fixed',
@@ -99,7 +79,7 @@ export default function BottomNav() {
         justifyContent: 'space-around',
         padding: '0 8px',
         paddingBottom: 'env(safe-area-inset-bottom, 8px)',
-        height: 64,
+        height: 60,
       }}>
         {/* Frosted glass background */}
         <div style={{
@@ -124,7 +104,7 @@ export default function BottomNav() {
               onClick={handleTap}
               style={{
                 display: 'flex', flexDirection: 'column', alignItems: 'center',
-                gap: item.isCreate ? 0 : 4,
+                gap: 4,
                 color: active ? 'var(--accent)' : 'var(--text-muted)',
                 textDecoration: 'none',
                 flex: 1,
@@ -137,19 +117,9 @@ export default function BottomNav() {
               }}
             >
               {item.icon(active)}
-              {!item.isCreate && (
-                <span style={{
-                  fontSize: '.65rem',
-                  fontWeight: active ? 700 : 500,
-                  letterSpacing: '.02em',
-                  fontFamily: 'var(--font-body)',
-                  transition: 'font-weight 0.15s',
-                }}>
-                  {item.label}
-                </span>
-              )}
+              <span style={{ fontSize: '.65rem', fontWeight: active ? 700 : 500, letterSpacing: '.02em', fontFamily: 'var(--font-body)' }}>{item.label}</span>
               {/* Active dot indicator */}
-              {active && !item.isCreate && (
+              {active && (
                 <div style={{
                   position: 'absolute',
                   top: 4,
